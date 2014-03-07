@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Just 2 records picked from princeton_sample.xml -->
+<collection xmlns="http://www.loc.gov/MARC21/slim" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.loc.gov/MARC21/slim http://www.loc.gov/standards/marcxml/schema/MARC21slim.xsd">
+<record>
+   <leader>00987cam a2200229u  4500</leader>
+   <controlfield tag="001">4977356</controlfield>
+   <controlfield tag="005">20061216162934.0</controlfield>
+   <controlfield tag="008">060302s1900    ja |||||||||||||||||jpn|d</controlfield>
+   <datafield ind1=" " ind2=" " tag="035">
+      <subfield code="a">(idCotsen)96334</subfield>
+   </datafield>
+   <datafield ind1=" " ind2=" " tag="035">
+      <subfield code="a">(CTSN)1001920</subfield>
+   </datafield>
+   <datafield ind1=" " ind2=" " tag="035">
+      <subfield code="a">(cotsendb)81330</subfield>
+   </datafield>
+   <datafield ind1="1" ind2=" " tag="100">
+      <subfield code="a">Nishimori, Takeki.</subfield>
+   </datafield>
+   <datafield ind1="1" ind2="0" tag="245">
+      <subfield code="a">Tetsudo shoka : Tokaido kisha kurige (Funny railway song from Tokaido).</subfield>
+   </datafield>
+   <datafield ind1=" " ind2=" " tag="260">
+      <subfield code="a">Tokyo.</subfield>
+      <subfield code="b">Rangaido Shoho.</subfield>
+      <subfield code="c">1900.</subfield>
+   </datafield>
+   <datafield ind1=" " ind2=" " tag="300">
+      <subfield code="a">2, 56 p. : ill. ; 15 cm.</subfield>
+   </datafield>
+   <datafield ind1=" " ind2=" " tag="500">
+      <subfield code="a">At head of title: Kotsuhidojin(the author?) koetsu; Nisei no Yajirobe, Nisei no Kitahachi (The author's children collaborated with this work).</subfield>
+   </datafield>
+   <datafield ind1=" " ind2=" " tag="500">
+      <subfield code="a">Contains music without melody in number notation.</subfield>
+   </datafield>
+   <datafield ind1=" " ind2=" " tag="500">
+      <subfield code="a">Includes funny and comical illustrations: see cover (maybe by Kiyochika); P. 21 (a night train passenger with running nose); p. 30.</subfield>
+   </datafield>
+   <datafield ind1=" " ind2=" " tag="500">
+      <subfield code="a">Title from title page.</subfield>
+   </datafield>
+   <datafield ind1=" " ind2=" " tag="563">
+      <subfield code="a">Col. ill. printed wraps.</subfield>
+   </datafield>
+   <datafield ind1=" " ind2=" " tag="653">
+      <subfield code="a">Japanese.</subfield>
+   </datafield>
+   <datafield ind1="8" ind2=" " tag="852">
+      <subfield code="b">ctsn</subfield>
+      <subfield code="c">Pams / NR / Japanese / Box 47</subfield>
+      <subfield code="h">96334</subfield>
+      <subfield code="p">32101052101894</subfield>
+   </datafield>
+</record>
+<record>
+   <leader>00765cam a2200205u  4500</leader>
+   <controlfield tag="001">4980164</controlfield>
+   <controlfield tag="005">20061216211346.0</controlfield>
+   <controlfield tag="008">060302s1925    ja |||||||||||||||||jpn|d</controlfield>
+   <datafield ind1=" " ind2=" " tag="035">
+      <subfield code="a">(idCotsen)100634</subfield>
+   </datafield>
+   <datafield ind1=" " ind2=" " tag="035">
+      <subfield code="a">(CTSN)1006695</subfield>
+   </datafield>
+   <datafield ind1=" " ind2=" " tag="035">
+      <subfield code="a">(cotsendb)86105</subfield>
+   </datafield>
+   <datafield ind1="1" ind2="0" tag="245">
+      <subfield code="a">Jusando sono yon (The thirteen children, vol. 4).</subfield>
+   </datafield>
+   <datafield ind1=" " ind2=" " tag="260">
+      <subfield code="a">[Tokyo].</subfield>
+      <subfield code="b">[s.n.].</subfield>
+      <subfield code="c">1925.</subfield>
+   </datafield>
+   <datafield ind1=" " ind2=" " tag="300">
+      <subfield code="a">[26] p. (double leaves) : col. ill. ; 16 x 12 cm.</subfield>
+   </datafield>
+   <datafield ind1=" " ind2=" " tag="500">
+      <subfield code="a">Personal daiary of journey through stations of Tokaido-sen(Tokaido Rail Way).</subfield>
+   </datafield>
+   <datafield ind1=" " ind2=" " tag="500">
+      <subfield code="a">With collectable and comemorable tags and labels in Taisho period.</subfield>
+   </datafield>
+   <datafield ind1=" " ind2=" " tag="500">
+      <subfield code="a">Title from cover.</subfield>
+   </datafield>
+   <datafield ind1=" " ind2=" " tag="563">
+      <subfield code="a">Col. ill. wraps with purple silk codes.</subfield>
+   </datafield>
+   <datafield ind1=" " ind2=" " tag="653">
+      <subfield code="a">Japanese.</subfield>
+   </datafield>
+   <datafield ind1="8" ind2=" " tag="852">
+      <subfield code="b">ctsn</subfield>
+      <subfield code="c">Pams / NR / Japanese / Box 33</subfield>
+       <subfield code="h">100634</subfield>
+      <subfield code="p">32101052878509</subfield>
+   </datafield>
+</record>
+</collection>

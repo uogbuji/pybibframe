@@ -1,2 +1,4 @@
 akara==2.0.0a4
+amara==2.0.0a6
 pymarc
+nose

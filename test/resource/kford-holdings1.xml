@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  http://bibframe.org/tools/compare/bibid/16575466
+
+  a case where various diff notions of annotations are embeded in side of 856
+  unclear how to codify, but if you look at MARCXML for 856
+  you'll see several examples—
+  the annotation "type" embded as a string
+-->
+<marcxml:record xmlns:marcxml="http://www.loc.gov/MARC21/slim">
+  <marcxml:leader>04104cam a22003974a 4500</marcxml:leader>
+  <marcxml:controlfield tag="001">16575466</marcxml:controlfield>
+  <marcxml:controlfield tag="005">20110822121127.0</marcxml:controlfield>
+  <marcxml:controlfield tag="008">101210s2011    enk      b    001 0 eng  </marcxml:controlfield>
+  <marcxml:datafield tag="906" ind1=" " ind2=" ">
+    <marcxml:subfield code="a">7</marcxml:subfield>
+    <marcxml:subfield code="b">cbc</marcxml:subfield>
+    <marcxml:subfield code="c">orignew</marcxml:subfield>
+    <marcxml:subfield code="d">1</marcxml:subfield>
+    <marcxml:subfield code="e">ecip</marcxml:subfield>
+    <marcxml:subfield code="f">20</marcxml:subfield>
+    <marcxml:subfield code="g">y-gencatlg</marcxml:subfield>
+  </marcxml:datafield>
+  <marcxml:datafield tag="925" ind1="0" ind2=" ">
+    <marcxml:subfield code="a">acquire</marcxml:subfield>
+    <marcxml:subfield code="b">2 shelf copies</marcxml:subfield>
+    <marcxml:subfield code="x">policy default</marcxml:subfield>
+  </marcxml:datafield>
+  <marcxml:datafield tag="955" ind1=" " ind2=" ">
+    <marcxml:subfield code="b">xj07 2010-12-10</marcxml:subfield>
+    <marcxml:subfield code="c">xj07 2010-12-10 ONIX to Soc.Sci. Sect.</marcxml:subfield>
+    <marcxml:subfield code="d">xj03 2010-12-17; 2010-12-20 to Dewey</marcxml:subfield>
+    <marcxml:subfield code="w">rd05 2010-12-21</marcxml:subfield>
+    <marcxml:subfield code="a">xe08 2011-07-15 2 copies rec'd to CIP ver.</marcxml:subfield>
+    <marcxml:subfield code="f">xh58 2011-07-19 Z-CipVer</marcxml:subfield>
+    <marcxml:subfield code="t">xh58 2011-07-19 c. 2 added</marcxml:subfield>
+  </marcxml:datafield>
+  <marcxml:datafield tag="010" ind1=" " ind2=" ">
+    <marcxml:subfield code="a">  2010052188</marcxml:subfield>
+  </marcxml:datafield>
+  <marcxml:datafield tag="020" ind1=" " ind2=" ">
+    <marcxml:subfield code="a">9780521140553 (pbk.)</marcxml:subfield>
+  </marcxml:datafield>
+  <marcxml:datafield tag="020" ind1=" " ind2=" ">
+    <marcxml:subfield code="a">0521140552 (pbk.)</marcxml:subfield>
+  </marcxml:datafield>
+  <marcxml:datafield tag="020" ind1=" " ind2=" ">
+    <marcxml:subfield code="a">9780521192194</marcxml:subfield>
+  </marcxml:datafield>
+  <marcxml:datafield tag="020" ind1=" " ind2=" ">
+    <marcxml:subfield code="a">0521192196</marcxml:subfield>
+  </marcxml:datafield>
+  <marcxml:datafield tag="035" ind1=" " ind2=" ">
+    <marcxml:subfield code="a">(OCoLC)ocn671709910</marcxml:subfield>
+  </marcxml:datafield>
+  <marcxml:datafield tag="040" ind1=" " ind2=" ">
+    <marcxml:subfield code="a">DLC</marcxml:subfield>
+    <marcxml:subfield code="c">DLC</marcxml:subfield>
+    <marcxml:subfield code="d">YDX</marcxml:subfield>
+    <marcxml:subfield code="d">BTCTA</marcxml:subfield>
+    <marcxml:subfield code="d">YDXCP</marcxml:subfield>
+    <marcxml:subfield code="d">CDX</marcxml:subfield>
+    <marcxml:subfield code="d">BWX</marcxml:subfield>
+    <marcxml:subfield code="d">IUL</marcxml:subfield>
+    <marcxml:subfield code="d">DLC</marcxml:subfield>
+  </marcxml:datafield>
+  <marcxml:datafield tag="042" ind1=" " ind2=" ">
+    <marcxml:subfield code="a">pcc</marcxml:subfield>
+  </marcxml:datafield>
+  <marcxml:datafield tag="050" ind1="0" ind2="0">
+    <marcxml:subfield code="a">JC423</marcxml:subfield>
+    <marcxml:subfield code="b">.B8646 2011</marcxml:subfield>
+  </marcxml:datafield>
+  <marcxml:datafield tag="082" ind1="0" ind2="0">
+    <marcxml:subfield code="a">321.8</marcxml:subfield>
+    <marcxml:subfield code="2">22</marcxml:subfield>
+  </marcxml:datafield>
+  <marcxml:datafield tag="084" ind1=" " ind2=" ">
+    <marcxml:subfield code="a">POL011000</marcxml:subfield>
+    <marcxml:subfield code="2">bisacsh</marcxml:subfield>
+  </marcxml:datafield>
+  <marcxml:datafield tag="245" ind1="0" ind2="0">
+    <marcxml:subfield code="a">Building global democracy? :</marcxml:subfield>
+    <marcxml:subfield code="b">civil society and accountable global governance /</marcxml:subfield>
+    <marcxml:subfield code="c">edited by Jan Aart Scholte.</marcxml:subfield>
+  </marcxml:datafield>
+  <marcxml:datafield tag="260" ind1=" " ind2=" ">
+    <marcxml:subfield code="a">Cambridge, UK ;</marcxml:subfield>
+    <marcxml:subfield code="a">New York :</marcxml:subfield>
+    <marcxml:subfield code="b">Cambridge University Press,</marcxml:subfield>
+    <marcxml:subfield code="c">2011.</marcxml:subfield>
+  </marcxml:datafield>
+  <marcxml:datafield tag="300" ind1=" " ind2=" ">
+    <marcxml:subfield code="a">xxv, 397 p. ;</marcxml:subfield>
+    <marcxml:subfield code="c">24 cm.</marcxml:subfield>
+  </marcxml:datafield>
+  <marcxml:datafield tag="504" ind1=" " ind2=" ">
+    <marcxml:subfield code="a">Includes bibliographical references (p. 343-380) and index.</marcxml:subfield>
+  </marcxml:datafield>
+  <marcxml:datafield tag="505" ind1="0" ind2="0">
+    <marcxml:subfield code="t">Introduction /</marcxml:subfield>
+    <marcxml:subfield code="r">Jan Aart Scholte --</marcxml:subfield>
+    <marcxml:subfield code="t">Global governance, accountability and civil society /</marcxml:subfield>
+    <marcxml:subfield code="r">Jan Aart Scholte --</marcxml:subfield>
+    <marcxml:subfield code="t">Civil society and accountability of the United Nations /</marcxml:subfield>
+    <marcxml:subfield code="r">Kerstin Martens --</marcxml:subfield>
+    <marcxml:subfield code="t">The World Bank and democratic accountability: the role of civil society /</marcxml:subfield>
+    <marcxml:subfield code="r">Alnoor Ebrahim and Steven Herz --</marcxml:subfield>
+    <marcxml:subfield code="t">Civil society and IMF accountability /</marcxml:subfield>
+    <marcxml:subfield code="r">Jan Aart Scholte --</marcxml:subfield>
+    <marcxml:subfield code="t">Civil society and the WTO: contesting accountability /</marcxml:subfield>
+    <marcxml:subfield code="r">Marc Williams --</marcxml:subfield>
+    <marcxml:subfield code="t">Civil society and accountability in the Commonwealth /</marcxml:subfield>
+    <marcxml:subfield code="r">Timothy M. Shaw and Pamela K. Mbabazi --</marcxml:subfield>
+    <marcxml:subfield code="t">The organisation of the Islamic conference, accountability and civil society /</marcxml:subfield>
+    <marcxml:subfield code="r">Saied Reza Ameli --</marcxml:subfield>
+    <marcxml:subfield code="t">Civil society and patterns of accountability in the OECD /</marcxml:subfield>
+    <marcxml:subfield code="r">Morten Ougaard --</marcxml:subfield>
+    <marcxml:subfield code="t">Civil society and G8 accountability /</marcxml:subfield>
+    <marcxml:subfield code="r">Peter I. Hajnal --</marcxml:subfield>
+    <marcxml:subfield code="t">Structuring accountability: civil society and the Asia-Europe meeting /</marcxml:subfield>
+    <marcxml:subfield code="r">Julie Gilson --</marcxml:subfield>
+    <marcxml:subfield code="t">Civil society and accountability in global governance of climate change /</marcxml:subfield>
+    <marcxml:subfield code="r">Peter Newell --</marcxml:subfield>
+    <marcxml:subfield code="t">Civil society and accountability promotion in the global fund /</marcxml:subfield>
+    <marcxml:subfield code="r">Carolyn Long and Nata Duvvury --</marcxml:subfield>
+    <marcxml:subfield code="t">Accountability in private global governance: ICANN and civil society /</marcxml:subfield>
+    <marcxml:subfield code="r">Mawaki Chango --</marcxml:subfield>
+    <marcxml:subfield code="t">Civil society and the World Fair Trade Organisation: developing responsive accountability /</marcxml:subfield>
+    <marcxml:subfield code="r">Heidi Ullrich --</marcxml:subfield>
+    <marcxml:subfield code="t">Conclusion /</marcxml:subfield>
+    <marcxml:subfield code="r">Jan Aart Scholte.</marcxml:subfield>
+  </marcxml:datafield>
+  <marcxml:datafield tag="520" ind1=" " ind2=" ">
+    <marcxml:subfield code="a">"The scale, effectiveness and legitimacy of global governance lag far behind the world's needs. This path-breaking book examines how far civil society involvement provides an answer to these problems. Does civil society make global governance more democratic? Have citizen action groups raised the accountability of global bodies that deal with challenges such as climate change, financial crises, conflict, disease and inequality? What circumstances have promoted (or blocked) civil society efforts to make global governance institutions more democratically accountable? What could improve these outcomes in the future? The authors base their argument on studies of thirteen global institutions, including the UN, G8, WTO, ICANN and IMF. Specialists from around the world critically assess what has and has not worked in efforts to make global bodies answer to publics as well as states. Combining intellectual depth and political relevance, Building Global Democracy? will appeal to students, researchers, activists and policymakers"--</marcxml:subfield>
+    <marcxml:subfield code="c">Provided by publisher.</marcxml:subfield>
+  </marcxml:datafield>
+  <marcxml:datafield tag="650" ind1=" " ind2="0">
+    <marcxml:subfield code="a">Democratization.</marcxml:subfield>
+  </marcxml:datafield>
+  <marcxml:datafield tag="650" ind1=" " ind2="0">
+    <marcxml:subfield code="a">Civil society.</marcxml:subfield>
+  </marcxml:datafield>
+  <marcxml:datafield tag="650" ind1=" " ind2="0">
+    <marcxml:subfield code="a">International organization.</marcxml:subfield>
+  </marcxml:datafield>
+  <marcxml:datafield tag="700" ind1="1" ind2=" ">
+    <marcxml:subfield code="a">Scholte, Jan Aart.</marcxml:subfield>
+  </marcxml:datafield>
+  <marcxml:datafield tag="856" ind1="4" ind2="2">
+    <marcxml:subfield code="3">Cover image</marcxml:subfield>
+    <marcxml:subfield code="u">http://assets.cambridge.org/97805211/40553/cover/9780521140553.jpg</marcxml:subfield>
+  </marcxml:datafield>
+  <marcxml:datafield tag="856" ind1="4" ind2="2">
+    <marcxml:subfield code="3">Contributor biographical information</marcxml:subfield>
+    <marcxml:subfield code="u">http://www.loc.gov/catdir/enhancements/fy1114/2010052188-b.html</marcxml:subfield>
+  </marcxml:datafield>
+  <marcxml:datafield tag="856" ind1="4" ind2="2">
+    <marcxml:subfield code="3">Publisher description</marcxml:subfield>
+    <marcxml:subfield code="u">http://www.loc.gov/catdir/enhancements/fy1114/2010052188-d.html</marcxml:subfield>
+  </marcxml:datafield>
+  <marcxml:datafield tag="856" ind1="4" ind2="1">
+    <marcxml:subfield code="3">Table of contents only</marcxml:subfield>
+    <marcxml:subfield code="u">http://www.loc.gov/catdir/enhancements/fy1114/2010052188-t.html</marcxml:subfield>
+  </marcxml:datafield>
+</marcxml:record>

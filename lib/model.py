@@ -20,7 +20,7 @@ class model:
     def create_space(self):
         '''Set up a new table space for the first time'''
         cur = self._conn.cursor()
-        cur.execute(SQL_MODEL)
+        cur.executescript(SQL_MODEL)
         self._conn.commit()
         cur.close()
         return
@@ -28,7 +28,7 @@ class model:
     def drop_space(self):
         '''Dismantle an existing table space'''
         cur = self._conn.cursor()
-        cur.execute(DROP_SQL_MODEL)
+        cur.executescript(DROP_SQL_MODEL)
         self._conn.commit()
         cur.close()
         return
@@ -53,21 +53,21 @@ class model:
         tables = u"relationship"
         params = []
         if subj:
-            conditions += u"relationship.subj = %s"
+            conditions += u"relationship.subj = ?"
             params.append(subj)
             and_placeholder = u" AND "
         if obj:
-            conditions += and_placeholder + u"relationship.obj = %s"
+            conditions += and_placeholder + u"relationship.obj = ?"
             params.append(obj)
             and_placeholder = u" AND "
         if pred:
-            conditions += and_placeholder + u"relationship.pred = %s"
+            conditions += and_placeholder + u"relationship.pred = ?"
             params.append(pred)
             and_placeholder = u" AND "
         if attrs:
             tables = u"relationship, attribute"
             for a_name, a_val in attrs.iteritems():
-                conditions += and_placeholder + u"EXISTS (SELECT 1 from attribute AS subattr WHERE subattr.rawid = relationship.rawid AND subattr.name = %s AND subattr.value = %s)"
+                conditions += and_placeholder + u"EXISTS (SELECT 1 from attribute AS subattr WHERE subattr.rawid = relationship.rawid AND subattr.name = ? AND subattr.value = ?)"
                 params.extend((a_name, a_val))
                 and_placeholder = u" AND "
         #querystr = u"SELECT relationship.rawid, relationship.subj, relationship.pred, relationship.obj, attribute.name, attribute.value FROM {0} WHERE {1} ORDER BY relationship.rawid;".format(tables, conditions)
@@ -97,15 +97,17 @@ class model:
         cur = self._conn.cursor()
         #relationship.
         if rid:
-            querystr = u"INSERT INTO relationship (subj, pred, obj, rid) VALUES (%s, %s, %s, %s) RETURNING rawid;"
+            querystr = u"INSERT INTO relationship (subj, pred, obj, rid) VALUES (?, ?, ?, ?)"
             cur.execute(querystr, (subj, pred, obj, rid))
         else:
-            querystr = u"INSERT INTO relationship (subj, pred, obj) VALUES (%s, %s, %s) RETURNING rawid;"
+            querystr = u"INSERT INTO relationship (subj, pred, obj) VALUES (?, ?, ?)"
+            import logging; logging.debug(querystr); logging.debug(repr((subj, pred, obj)))
             cur.execute(querystr, (subj, pred, obj))
-        rawid = cur.fetchone()[0]
-        for a_name, a_val in attrs.iteritems():
-            querystr = u"INSERT INTO attribute (rawid, name, value) VALUES (%s, %s, %s);"
-            cur.execute(querystr, (rawid, a_name, a_val))
+        rawid = cur.lastrowid
+        if attrs:
+            for a_name, a_val in attrs.iteritems():
+                querystr = u"INSERT INTO attribute (rawid, name, value) VALUES (?, ?, ?)"
+                cur.execute(querystr, (rawid, a_name, a_val))
         self._conn.commit()
         cur.close()
         return
@@ -183,7 +185,7 @@ class model:
 
 SQL_MODEL = '''
 CREATE TABLE relationship (
-    rawid    INT PRIMARY KEY,  -- low level, internal ID purely for effieicnt referential integrity
+    rawid    INTEGER PRIMARY KEY AUTOINCREMENT,  -- low level, internal ID purely for effieicnt referential integrity
     id       TEXT UNIQUE,      --The higher level relationship ID
     subj     TEXT NOT NULL,
     pred     TEXT NOT NULL,
@@ -191,7 +193,7 @@ CREATE TABLE relationship (
 );
 
 CREATE TABLE attribute (
-    rawid    INT REFERENCES relationship (rawid),
+    rawid    INTEGER REFERENCES relationship (rawid),
     name     TEXT,
     value    TEXT
 );
