@@ -49,7 +49,8 @@ MATERIALIZE_VIA_ANNOTATION = {
 
 FIELD_RENAMINGS = {
 '010a': 'lccn',
-'020a': 'isbn',
+#Don't do a simple field renaming of ISBN because
+#'020a': 'isbn',
 '022a': 'issn',
 '034a': 'cartographicMathematicalDataScaleStatement', #Rebecca & Sally suggested this should effectively be a merge with 034a
 '034b': 'cartographicMathematicalDataProjectionStatement',

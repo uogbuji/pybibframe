@@ -19,11 +19,12 @@ from amara.lib.util import element_subtree_iter
 from amara.lib import iri
 from amara import namespaces
 
+from versa import I
+
+from bibframe import BFZ, BFLC
 from bibframe.isbnplus import isbn_list
 from bibframe.reader.marcpatterns import MATERIALIZE, MATERIALIZE_VIA_ANNOTATION, FIELD_RENAMINGS, INSTANCE_FIELDS
 from bibframe.reader.marcextra import process_leader, process_008
-
-from versa import I
 
 
 #canonicalize_isbns
@@ -33,8 +34,6 @@ FALINKFIELD = u'856u'
 #CATLINKFIELD = u'010a'
 CATLINKFIELD = u'LCCN'
 CACHEDIR = os.path.expanduser('~/tmp')
-
-BFV = I('http://bibframe.org/vocab/')
 
 NON_ISBN_CHARS = re.compile(u'\D')
 
@@ -69,8 +68,8 @@ def idgen(idbase):
     Generate a IRI
     '''
     #Simple tumbler for now, possibly switch to random number, with some sort of sequence override for unit testing
+    ix = 0
     while True:
-        ix = 0
         yield iri.absolutize(str(ix), idbase) if idbase else str(ix)
         ix += 1
 
@@ -123,14 +122,14 @@ def process(recs, relsink, idbase, logger=logging):
         if code is None: code = lookup
         (subst, extra_props) = MATERIALIZE[lookup]
         if RESOURCE_TYPE in extra_props:
-            relsink.add(I(materializedid), RDFTYPE, I(iri.absolutize(extra_props[RESOURCE_TYPE], BFV)))
+            relsink.add(I(materializedid), RDFTYPE, I(iri.absolutize(extra_props[RESOURCE_TYPE], BFZ)))
         logger.debug((lookup, subfields, extra_props))
 
         if materializedid in T_prior_materializedids:
             #Just bundle in the subfields as they are, to avoid throwing out data. They can be otherwise used or just stripped later on
             for k, v in itertools.chain((u'marccode', code), subfields.iteritems(), extra_props.iteritems()):
                 if k == RESOURCE_TYPE: continue
-                relsink.add(I(materializedid), iri.absolutize(k, BFV), v)
+                relsink.add(I(materializedid), iri.absolutize(k, BFZ), v)
 
         return materializedid, subst
 
@@ -148,9 +147,9 @@ def process(recs, relsink, idbase, logger=logging):
         #object_props.update(object_subfields)
 
         annotationid = idg.next()
-        relsink.add(I(annotationid), RDFTYPE, I(iri.absolutize(anntype, BFV)))
+        relsink.add(I(annotationid), RDFTYPE, I(iri.absolutize(anntype, BFZ)))
         for k, v in itertools.chain(annotation_subfields.items(), extra_annotation_props.items()):
-            relsink.add(I(annotationid), I(iri.absolutize(k, BFV)), v)
+            relsink.add(I(annotationid), I(iri.absolutize(k, BFZ)), v)
 
         #Return enough info to generate the main subject/object relationship. The annotation is taken care of at this point
         return annotationid, object_subfields
@@ -160,15 +159,19 @@ def process(recs, relsink, idbase, logger=logging):
         leader = U(rec.xml_select(u'ma:leader', prefixes=PREFIXES))
         #Add work item record
         workid = idg.next()
-        relsink.add(I(workid), RDFTYPE, I(iri.absolutize('Work', BFV)))
+        relsink.add(I(workid), RDFTYPE, I(iri.absolutize('Work', BFZ)))
         instanceid = idg.next()
-        relsink.add(I(instanceid), RDFTYPE, I(iri.absolutize('Instance', BFV)))
+        logger.debug((workid, instanceid))
+
+        relsink.add(I(instanceid), RDFTYPE, I(iri.absolutize('Instance', BFZ)))
         #relsink.add((instanceid, iri.absolutize('leader', PROPBASE), leader))
-        relsink.add(I(workid), I(iri.absolutize('hasInstance', BFV)), I(instanceid))
+        #Instances are added below
+        #relsink.add(I(workid), I(iri.absolutize('hasInstance', BFZ)), I(instanceid))
 
         for cf in rec.xml_select(u'ma:controlfield', prefixes=PREFIXES):
+            #Control fields are tags 001-009
             code = U(cf.xml_select(u'@tag'))
-            key = u'cftag_' + code
+            key = u'tag-' + code
             val = U(cf)
             if code == '008':
                 field008 = val
@@ -177,14 +180,14 @@ def process(recs, relsink, idbase, logger=logging):
                     sfcode = U(sf.xml_select(u'@code'))
                     sfval = U(sf)
                     #For now assume all leader fields are instance level
-                    relsink.add(I(instanceid), I(iri.absolutize('MARC' + key + sfcode, BFV)), sfval)
+                    relsink.add(I(instanceid), I(iri.absolutize(key, BFZ)), sfval)
             else:
                 #For now assume all leader fields are instance level
-                relsink.add(I(instanceid), I(iri.absolutize('MARC' + key, BFV)), val)
+                relsink.add(I(instanceid), I(iri.absolutize(key, BFZ)), val)
 
         for df in rec.xml_select(u'ma:datafield', prefixes=PREFIXES):
             code = U(df.xml_select(u'@tag'))
-            key = u'dftag_' + code
+            key = u'tag-' + code
             val = U(df)
             handled = False
             if list(df.xml_select(u'ma:subfield', prefixes=PREFIXES)):
@@ -195,7 +198,7 @@ def process(recs, relsink, idbase, logger=logging):
                 if code in MATERIALIZE:
                     materializedid, subst = process_materialization(code, subfields)
                     subject = instanceid if code in INSTANCE_FIELDS else workid
-                    relsink.add(I(subject), I(iri.absolutize(subst, BFV)), I(materializedid))
+                    relsink.add(I(subject), I(iri.absolutize(subst, BFZ)), I(materializedid))
                     print >> sys.stderr, '.',
                     handled = True
 
@@ -206,10 +209,10 @@ def process(recs, relsink, idbase, logger=logging):
 
                     subject = instanceid if code in INSTANCE_FIELDS else workid
                     objectid = idg.next()
-                    relsink.add(I(subject), I(iri.absolutize(subst, BFV)), I(objectid), {I(iri.absolutize('annotation', BFV)): I(annotationid)})
+                    relsink.add(I(subject), I(iri.absolutize(subst, BFZ)), I(objectid), {I(iri.absolutize('annotation', BFZ)): I(annotationid)})
 
                     for k, v in itertools.chain((u'marccode', code), object_subfields.items(), extra_object_props.items()):
-                        relsink.add(I(objectid), I(iri.absolutize(k, BFV)), v)
+                        relsink.add(I(objectid), I(iri.absolutize(k, BFZ)), v)
 
                     print >> sys.stderr, '.',
                     handled = True
@@ -222,7 +225,7 @@ def process(recs, relsink, idbase, logger=logging):
                             #XXX At first glance you'd think you can always derive code from lookup (e.g. lookup[:3] but what if e.g. someone trims the left zero fill on the codes in the serialization?
                             materializedid, subst = process_materialization(lookup, subfields, code=code)
                             subject = instanceid if code in INSTANCE_FIELDS else workid
-                            relsink.add(I(subject), I(iri.absolutize(subst, BFV)), I(materializedid))
+                            relsink.add(I(subject), I(iri.absolutize(subst, BFZ)), I(materializedid))
 
                             #Is the MARC code part of the hash computation for the materiaalized object ID? Surely not!
                             #materializedid = hashidgen((code,) + tuple(subfields.items()))
@@ -230,16 +233,16 @@ def process(recs, relsink, idbase, logger=logging):
                             handled = True
 
                         else:
-                            field_name = u'dftag/' + lookup
+                            field_name = u'tag-' + lookup
                             if lookup in FIELD_RENAMINGS:
                                 field_name = FIELD_RENAMINGS[lookup]
                             #Handle the simple field_name substitution of a label name for a MARC code
                             subject = instanceid if code in INSTANCE_FIELDS else workid
-                            relsink.add(I(subject), I(iri.absolutize(field_name, BFV)), v)
+                            relsink.add(I(subject), I(iri.absolutize(field_name, BFZ)), v)
 
             #print >> sys.stderr, lookup, key
             subject = instanceid if code in INSTANCE_FIELDS else workid
-            relsink.add(I(subject), I(iri.absolutize(u'dftag/' + code, BFV)), val)
+            relsink.add(I(subject), I(iri.absolutize(key, BFZ)), val)
 
 
         special_properties = {}
@@ -255,7 +258,7 @@ def process(recs, relsink, idbase, logger=logging):
             special_properties[k] = list(v)
             for item in v:
             #logger.debug(v)
-                relsink.add(I(instanceid), I(iri.absolutize(k, BFV)), item)
+                relsink.add(I(instanceid), I(iri.absolutize(k, BFZ)), item)
 
 
         #reduce lists of just one item
@@ -266,8 +269,10 @@ def process(recs, relsink, idbase, logger=logging):
 
         
         #Handle ISBNs re: https://foundry.zepheira.com/issues/1976
-        isbn_stmts = relsink.match(subj=instanceid, pred=iri.absolutize(u'isbn', BFV))
+        ISBN_FIELD = u'tag-020'
+        isbn_stmts = relsink.match(subj=instanceid, pred=iri.absolutize(ISBN_FIELD, BFZ))
         isbns = [ s[2] for s in isbn_stmts ]
+        logger.debug(list(isbn_list(isbns)))
         other_instance_ids = []
         subscript = ord(u'a')
         newid = None
@@ -275,17 +280,17 @@ def process(recs, relsink, idbase, logger=logging):
             #print >> sys.stderr, subix, inum, itype
             newid = idg.next()
             duplicate_statements(relsink, instanceid, newid)
-            relsink.add(I(newid), I(iri.absolutize(u'isbn', BFV)), inum)
+            relsink.add(I(newid), I(iri.absolutize(u'isbn', BFZ)), inum)
             #subitem[u'id'] = instanceid + (unichr(subscript + subix) if subix else u'')
-            if itype: relsink.add(I(newid), I(iri.absolutize(u'isbnType', BFV)), I(itype))
+            if itype: relsink.add(I(newid), I(iri.absolutize(u'isbnType', BFZ)), itype)
             other_instance_ids.append(newid)
 
         if not other_instance_ids:
             #Make sure it's created as an instance even if it has no ISBN
-            relsink.add(I(workid), I(iri.absolutize(u'instance', BFV)), I(instanceid))
+            relsink.add(I(workid), I(iri.absolutize(u'hasInstance', BFZ)), I(instanceid))
 
         for iid in other_instance_ids:
-            relsink.add(I(workid), I(iri.absolutize(u'instance', BFV)), I(iid))
+            relsink.add(I(workid), I(iri.absolutize(u'hasInstance', BFZ)), I(iid))
 
         #if newid is None: #No ISBN specified
         #    send_instance(ninst)
@@ -297,7 +302,7 @@ def process(recs, relsink, idbase, logger=logging):
 
 def duplicate_statements(model, oldsubject, newsubject):
     for stmt in model.match(oldsubject):
-        s, p, o, c = stmt
-        model.add(I(newsubject), p, o, c)
-        return
+        s, p, o, a = stmt
+        model.add(I(newsubject), p, o, a)
+    return
 

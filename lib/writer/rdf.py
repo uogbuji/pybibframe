@@ -17,12 +17,13 @@ from amara import namespaces
 
 from versa import I, SUBJECT, RELATIONSHIP, VALUE
 
-BFV = 'http://bibframe.org/vocab/'
+from bibframe import BFZ, BFLC
+
 RDFTYPE = namespaces.RDF_NAMESPACE + 'type'
 
-WORKCLASS = iri.absolutize('Work', BFV)
-INSTANCECLASS = iri.absolutize('Instance', BFV)
-INSTANCEREL = iri.absolutize('hasInstance', BFV)
+WORKCLASS = iri.absolutize('Work', BFZ)
+INSTANCECLASS = iri.absolutize('Instance', BFZ)
+INSTANCEREL = iri.absolutize('hasInstance', BFZ)
 
 def prep(stmt):
     '''
@@ -47,7 +48,7 @@ def process(source, target, logger=logging):
         [ target.add(prep(wstmt)) for wstmt in source.match(workid) ]
         #[ target.add(*wstmt[:3]) for wstmt in source.match(workid) ]
         for wstmt in source.match(workid, INSTANCEREL):
-            instanceid = stmt[SUBJECT]
+            instanceid = wstmt[VALUE]
             [ target.add(prep(wstmt)) for wstmt in source.match(instanceid) ]
             #target.add(*wstmt[:3])
 

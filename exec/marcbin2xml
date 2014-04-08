@@ -1,0 +1,61 @@
+#!/usr/bin/env python
+'''
+marcbin2xml -o /tmp/foo.marc.xml foo.mrc
+'''
+
+#import os
+import sys
+import itertools
+import logging
+import argparse
+
+from pymarc import MARCReader #pip install pymarc #http://pypi.python.org/pypi/pymarc/
+from pymarc.marcxml import record_to_xml
+
+TEMPLATE_TOP = '''\
+<?xml version="1.0" encoding="UTF-8"?>
+<marc:collection xmlns:marc="http://www.loc.gov/MARC21/slim">
+'''
+
+TEMPLATE_BOTTOM = '''\
+</marc:collection>
+'''
+
+def run(inputs=None, limit=None, out=None, verbose=False):
+    '''
+    Convert a sequence of MARC21 records to one MARCXML document
+
+    python -c "import sys, btframework; btframework.marc2marcxml(sys.stdin, 3)" < HARVARDRECORDS/data/HLOM/ab.bib.01.20120727.full.mrc
+    '''
+    if verbose:
+        logging.basicConfig(level=logging.DEBUG)
+
+    reader = itertools.chain(*[ MARCReader(inf, to_unicode=True, force_utf8=True, utf8_handling='ignore') for inf in inputs ])
+    if limit is not None:
+        reader = itertools.islice(reader, int(limit))
+    print >> out, TEMPLATE_TOP
+    for rec in reader:
+        print >> out, record_to_xml(rec, namespace=True)
+    print >> out, TEMPLATE_BOTTOM
+    return
+
+
+if __name__ == '__main__':
+    #parser = argparse.ArgumentParser(prog="bootstrap", add_help=False)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('inputs', type=argparse.FileType('r'), metavar='inputs', nargs='+',
+                        help='One or more MARC21 binary files to be parsed and converted to MARC/XML')
+    parser.add_argument('-o', '--out', type=argparse.FileType('w'), default=sys.stdout,
+        help='file to which transform output should be written '
+             '(default: write to stdout)')
+    parser.add_argument('-l', '--limit', metavar="NUMBER", #dest="limit",
+        help='Limit output records to this number.')
+    parser.add_argument('-v', '--verbose', action='store_false',
+        help='whether to show additional messages and information')
+    #
+    args = parser.parse_args()
+
+    run(inputs=args.inputs, limit=args.limit, out=args.out, verbose=args.verbose)
+    for f in args.inputs: f.close()
+    args.out.close()
+

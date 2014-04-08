@@ -11,22 +11,24 @@ import rdflib
 from versa import I, VERSA_BASEIRI
 from versa.driver import memory
 
+from bibframe import BFZ, BFLC
 from bibframe.reader import marc
 from bibframe.writer import rdf
 
 PREFIXES = {u'ma': 'http://www.loc.gov/MARC21/slim', u'me': 'http://www.loc.gov/METS/'}
 
 #XXX: This refusal of rdflib to serialize without NS bindings set is really f@cking annoying [...to be fair seems not a problem for turtle output
-BFV = I('http://bibframe.org/vocab/')
-BFNS = rdflib.Namespace(BFV)
-BFCNS = rdflib.Namespace(BFV + 'cftag/')
-BFDNS = rdflib.Namespace(BFV + 'dftag/')
+
+BFNS = rdflib.Namespace(BFZ)
+BFCNS = rdflib.Namespace(BFZ + 'cftag/')
+BFDNS = rdflib.Namespace(BFZ + 'dftag/')
 VNS = rdflib.Namespace(VERSA_BASEIRI)
 
 
 def run(inputs=None, base=None, out=None, verbose=False):
+    logger = logging.getLogger('marc2bfrdf')
     if verbose:
-        logging.basicConfig(level=logging.DEBUG)
+        logger.setLevel(logging.DEBUG)
 
     m = memory.connection()
     for inf in inputs:
@@ -34,14 +36,14 @@ def run(inputs=None, base=None, out=None, verbose=False):
         #Top level ma:collection is optional, so can't just assume /ma:collection/ma:record XPath
         recs = indoc.xml_select(u'//ma:record', prefixes=PREFIXES)
         m.create_space()
-        marc.process(recs, m, idbase=base, logger=logging)
+        marc.process(recs, m, idbase=base, logger=logger)
 
     g = rdflib.Graph()
     g.bind('bf', BFNS)
     g.bind('bfc', BFCNS)
     g.bind('bfd', BFDNS)
     g.bind('v', VNS)
-    rdf.process(m, g, logger=logging)
+    rdf.process(m, g, logger=logger)
     out.write(g.serialize(format="turtle"))
     return
 
@@ -58,7 +60,7 @@ if __name__ == '__main__':
     #    help='config, a Versa file whose config (in the @docheader) should be used to parse the rest')
     parser.add_argument('-b', '--base', metavar="IRI", #dest="base",
         help='Base IRI to be used for creating resources.')
-    parser.add_argument('-v', '--verbose', action='store_false',
+    parser.add_argument('-v', '--verbose', action='store_true',
         help='whether to show additional messages and information')
     #
     args = parser.parse_args()
