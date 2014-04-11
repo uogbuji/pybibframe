@@ -5,17 +5,17 @@ import sys
 import logging
 import argparse
 
-import amara
 import rdflib
 
 from versa import I, VERSA_BASEIRI
 from versa.driver import memory
 
 from bibframe import BFZ, BFLC
-from bibframe.reader import marc
+from bibframe.reader import marc, marcxml
 from bibframe.writer import rdf
 
-PREFIXES = {u'ma': 'http://www.loc.gov/MARC21/slim', u'me': 'http://www.loc.gov/METS/'}
+
+#PREFIXES = {u'ma': 'http://www.loc.gov/MARC21/slim', u'me': 'http://www.loc.gov/METS/'}
 
 #XXX: This refusal of rdflib to serialize without NS bindings set is really f@cking annoying [...to be fair seems not a problem for turtle output
 
@@ -30,20 +30,22 @@ def run(inputs=None, base=None, out=None, verbose=False):
     if verbose:
         logger.setLevel(logging.DEBUG)
 
+    ids = marc.idgen(base)
     m = memory.connection()
-    for inf in inputs:
-        indoc = amara.parse(inf)
-        #Top level ma:collection is optional, so can't just assume /ma:collection/ma:record XPath
-        recs = indoc.xml_select(u'//ma:record', prefixes=PREFIXES)
-        m.create_space()
-        marc.process(recs, m, idbase=base, logger=logger)
-
     g = rdflib.Graph()
     g.bind('bf', BFNS)
     g.bind('bfc', BFCNS)
     g.bind('bfd', BFDNS)
     g.bind('v', VNS)
-    rdf.process(m, g, logger=logger)
+
+    def postprocess(rec):
+        rdf.process(m, g, logger=logger)
+        m.create_space()
+
+    for inf in inputs:
+        sink = marc.record_handler(m, idbase=base, ids=ids, postprocess=postprocess, logger=logger)
+        marcxml.parse_marcxml(inf, sink)
+
     out.write(g.serialize(format="turtle"))
     return
 

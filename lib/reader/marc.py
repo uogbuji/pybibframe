@@ -11,21 +11,22 @@ import itertools
 
 from datachef.ids import simple_hashstring
 
-import amara
-from amara.lib.util import coroutine
-from amara.thirdparty import httplib2, json
 from amara.lib import U
-from amara.lib.util import element_subtree_iter
 from amara.lib import iri
 from amara import namespaces
+from amara.lib.util import coroutine
+
 
 from versa import I
 
 from bibframe import BFZ, BFLC
 from bibframe.isbnplus import isbn_list
-from bibframe.reader.marcpatterns import MATERIALIZE, MATERIALIZE_VIA_ANNOTATION, FIELD_RENAMINGS, INSTANCE_FIELDS
+from bibframe.reader.marcpatterns import MATERIALIZE, MATERIALIZE_VIA_ANNOTATION, FIELD_RENAMINGS, INSTANCE_FIELDS, ANNOTATIONS_FIELDS
 from bibframe.reader.marcextra import process_leader, process_008
 
+LEADER = 0
+CONTROLFIELD = 1
+DATAFIELD = 2
 
 #canonicalize_isbns
 #from btframework.augment import lucky_viaf_template, lucky_idlc_template, DEFAULT_AUGMENTATIONS
@@ -74,7 +75,7 @@ def idgen(idbase):
         ix += 1
 
 
-def hashidgen(idbase, key):
+def hashid(idbase, key):
     '''
     Generate an IRI as a hash of given information
     '''
@@ -108,16 +109,27 @@ T_prior_materializedids = set()
 
 RESOURCE_TYPE = 'marcrType'
 
-def process(recs, relsink, idbase, logger=logging):
+def handle_collection(recs, relsink, idbase, ids=None, logger=logging):
+    '''
+
+    '''
+    if ids is None: ids = idgen(idbase)
+    for rec in recs:
+        process_record(rec, relsink, idbase, ids, logger)
+    return
+
+
+@coroutine
+def record_handler(relsink, idbase, ids=None, postprocess=None, logger=logging):
     '''
     
     '''
-    idg = idgen(idbase)
+    if ids is None: ids = idgen(idbase)
     #FIXME: Use thread local storage rather than function attributes
 
     #A few code modularization functions pulled into local context as closures
     def process_materialization(lookup, subfields, code=None):
-        materializedid = hashidgen(idbase, tuple(subfields.items()))
+        materializedid = hashid(idbase, tuple(subfields.items()))
         #The extra_props are parameters inherent to a particular MARC field/subfield for purposes of linked data representation
         if code is None: code = lookup
         (subst, extra_props) = MATERIALIZE[lookup]
@@ -146,7 +158,7 @@ def process(recs, relsink, idbase, logger=logging):
         #objectid = idg.next()
         #object_props.update(object_subfields)
 
-        annotationid = idg.next()
+        annotationid = ids.next()
         relsink.add(I(annotationid), RDFTYPE, I(iri.absolutize(anntype, BFZ)))
         for k, v in itertools.chain(annotation_subfields.items(), extra_annotation_props.items()):
             relsink.add(I(annotationid), I(iri.absolutize(k, BFZ)), v)
@@ -154,13 +166,13 @@ def process(recs, relsink, idbase, logger=logging):
         #Return enough info to generate the main subject/object relationship. The annotation is taken care of at this point
         return annotationid, object_subfields
 
-
-    for rec in recs:
-        leader = U(rec.xml_select(u'ma:leader', prefixes=PREFIXES))
+    while True:
+        rec = yield
+        leader = None
         #Add work item record
-        workid = idg.next()
+        workid = ids.next()
         relsink.add(I(workid), RDFTYPE, I(iri.absolutize('Work', BFZ)))
-        instanceid = idg.next()
+        instanceid = ids.next()
         logger.debug((workid, instanceid))
 
         relsink.add(I(instanceid), RDFTYPE, I(iri.absolutize('Instance', BFZ)))
@@ -168,81 +180,86 @@ def process(recs, relsink, idbase, logger=logging):
         #Instances are added below
         #relsink.add(I(workid), I(iri.absolutize('hasInstance', BFZ)), I(instanceid))
 
-        for cf in rec.xml_select(u'ma:controlfield', prefixes=PREFIXES):
-            #Control fields are tags 001-009
-            code = U(cf.xml_select(u'@tag'))
-            key = u'tag-' + code
-            val = U(cf)
-            if code == '008':
-                field008 = val
-            if list(cf.xml_select(u'ma:subfield', prefixes=PREFIXES)):
-                for sf in cf.xml_select(u'ma:subfield', prefixes=PREFIXES):
-                    sfcode = U(sf.xml_select(u'@code'))
-                    sfval = U(sf)
-                    #For now assume all leader fields are instance level
-                    relsink.add(I(instanceid), I(iri.absolutize(key, BFZ)), sfval)
-            else:
-                #For now assume all leader fields are instance level
+        for row in rec:
+            #FIXME: We might not even need val any more
+            val = None
+            if row[0] == LEADER:
+                leader = row[1]
+            elif row[0] == CONTROLFIELD:
+                code, val = row[1:]
+                key = u'tag-' + code
+                if code == '008':
+                    field008 = val
                 relsink.add(I(instanceid), I(iri.absolutize(key, BFZ)), val)
+                #for sf in subfields:
+                #    sfcode = U(sf.xml_select(u'@code'))
+                #    sfval = U(sf)
+                    #For now assume all leader fields are instance level
+                #    relsink.add(I(instanceid), I(iri.absolutize(key, BFZ)), sfval)
+                #else:
+                    #For now assume all leader fields are instance level
+                #    relsink.add(I(instanceid), I(iri.absolutize(key, BFZ)), val)
+            elif row[0] == DATAFIELD:
+                code, xmlattrs, subfields = row[1:]
+                key = u'tag-' + code
+                #val = row[2]
 
-        for df in rec.xml_select(u'ma:datafield', prefixes=PREFIXES):
-            code = U(df.xml_select(u'@tag'))
-            key = u'tag-' + code
-            val = U(df)
-            handled = False
-            if list(df.xml_select(u'ma:subfield', prefixes=PREFIXES)):
-                subfields = dict(( (U(sf.xml_select(u'@code')), U(sf)) for sf in df.xml_select(u'ma:subfield', prefixes=PREFIXES) ))
-                lookup = code
-                #See if any of the field codes represents a reference to an object which can be materialized
+                handled = False
+                subfields = dict(( (sf[0], sf[1]) for sf in subfields ))
+                if subfields:
+                    lookup = code
+                    #See if any of the field codes represents a reference to an object which can be materialized
 
-                if code in MATERIALIZE:
-                    materializedid, subst = process_materialization(code, subfields)
+                    if code in MATERIALIZE:
+                        materializedid, subst = process_materialization(code, subfields)
+                        subject = instanceid if code in INSTANCE_FIELDS else workid
+                        relsink.add(I(subject), I(iri.absolutize(subst, BFZ)), I(materializedid))
+                        logger.debug('.')
+                        handled = True
+
+                    if code in MATERIALIZE_VIA_ANNOTATION:
+                        #FIXME: code comments for extra_object_props & extra_annotation_props
+                        (subst, anntype, extra_annotation_props) = MATERIALIZE_VIA_ANNOTATION[code]
+                        annotationid, object_subfields = process_annotation(anntype, subfields, extra_annotation_props)
+
+                        subject = instanceid if code in INSTANCE_FIELDS else workid
+                        objectid = ids.next()
+                        relsink.add(I(subject), I(iri.absolutize(subst, BFZ)), I(objectid), {I(iri.absolutize('annotation', BFZ)): I(annotationid)})
+
+                        for k, v in itertools.chain(((u'marccode', code),), object_subfields.iteritems()):
+                        #for k, v in itertools.chain((u'marccode', code), object_subfields.items(), extra_object_props.items()):
+                            relsink.add(I(objectid), I(iri.absolutize(k, BFZ)), v)
+
+                        print >> sys.stderr, '.',
+                        handled = True
+
+                    #See if any of the field+subfield codes represents a reference to an object which can be materialized
+                    if not handled:
+                        for k, v in subfields.items():
+                            lookup = code + k
+                            if lookup in MATERIALIZE:
+                                #XXX At first glance you'd think you can always derive code from lookup (e.g. lookup[:3] but what if e.g. someone trims the left zero fill on the codes in the serialization?
+                                materializedid, subst = process_materialization(lookup, subfields, code=code)
+                                subject = instanceid if code in INSTANCE_FIELDS else workid
+                                relsink.add(I(subject), I(iri.absolutize(subst, BFZ)), I(materializedid))
+
+                                #Is the MARC code part of the hash computation for the materiaalized object ID? Surely not!
+                                #materializedid = hashid((code,) + tuple(subfields.items()))
+                                logger.debug('.')
+                                handled = True
+
+                            else:
+                                field_name = u'tag-' + lookup
+                                if lookup in FIELD_RENAMINGS:
+                                    field_name = FIELD_RENAMINGS[lookup]
+                                #Handle the simple field_name substitution of a label name for a MARC code
+                                subject = instanceid if code in INSTANCE_FIELDS else workid
+                                relsink.add(I(subject), I(iri.absolutize(field_name, BFZ)), v)
+
+                #print >> sys.stderr, lookup, key
+                if val:
                     subject = instanceid if code in INSTANCE_FIELDS else workid
-                    relsink.add(I(subject), I(iri.absolutize(subst, BFZ)), I(materializedid))
-                    print >> sys.stderr, '.',
-                    handled = True
-
-                if code in MATERIALIZE_VIA_ANNOTATION:
-                    #FIXME: code comments for extra_object_props & extra_annotation_props
-                    (subst, anntype) = MATERIALIZE_VIA_ANNOTATION[code]
-                    annotationid, object_subfields = process_annotation(anntype, subfields, extra_annotation_props)
-
-                    subject = instanceid if code in INSTANCE_FIELDS else workid
-                    objectid = idg.next()
-                    relsink.add(I(subject), I(iri.absolutize(subst, BFZ)), I(objectid), {I(iri.absolutize('annotation', BFZ)): I(annotationid)})
-
-                    for k, v in itertools.chain((u'marccode', code), object_subfields.items(), extra_object_props.items()):
-                        relsink.add(I(objectid), I(iri.absolutize(k, BFZ)), v)
-
-                    print >> sys.stderr, '.',
-                    handled = True
-
-                #See if any of the field+subfield codes represents a reference to an object which can be materialized
-                if not handled:
-                    for k, v in subfields.items():
-                        lookup = code + k
-                        if lookup in MATERIALIZE:
-                            #XXX At first glance you'd think you can always derive code from lookup (e.g. lookup[:3] but what if e.g. someone trims the left zero fill on the codes in the serialization?
-                            materializedid, subst = process_materialization(lookup, subfields, code=code)
-                            subject = instanceid if code in INSTANCE_FIELDS else workid
-                            relsink.add(I(subject), I(iri.absolutize(subst, BFZ)), I(materializedid))
-
-                            #Is the MARC code part of the hash computation for the materiaalized object ID? Surely not!
-                            #materializedid = hashidgen((code,) + tuple(subfields.items()))
-                            print >> sys.stderr, '.',
-                            handled = True
-
-                        else:
-                            field_name = u'tag-' + lookup
-                            if lookup in FIELD_RENAMINGS:
-                                field_name = FIELD_RENAMINGS[lookup]
-                            #Handle the simple field_name substitution of a label name for a MARC code
-                            subject = instanceid if code in INSTANCE_FIELDS else workid
-                            relsink.add(I(subject), I(iri.absolutize(field_name, BFZ)), v)
-
-            #print >> sys.stderr, lookup, key
-            subject = instanceid if code in INSTANCE_FIELDS else workid
-            relsink.add(I(subject), I(iri.absolutize(key, BFZ)), val)
+                    relsink.add(I(subject), I(iri.absolutize(key, BFZ)), val)
 
 
         special_properties = {}
@@ -267,7 +284,7 @@ def process(recs, relsink, idbase, logger=logging):
         #        work_item[k] = v[0]
         #work_sink.send(work_item)
 
-        
+
         #Handle ISBNs re: https://foundry.zepheira.com/issues/1976
         ISBN_FIELD = u'tag-020'
         isbn_stmts = relsink.match(subj=instanceid, pred=iri.absolutize(ISBN_FIELD, BFZ))
@@ -278,7 +295,7 @@ def process(recs, relsink, idbase, logger=logging):
         newid = None
         for subix, (inum, itype) in enumerate(isbn_list(isbns)):
             #print >> sys.stderr, subix, inum, itype
-            newid = idg.next()
+            newid = ids.next()
             duplicate_statements(relsink, instanceid, newid)
             relsink.add(I(newid), I(iri.absolutize(u'isbn', BFZ)), inum)
             #subitem[u'id'] = instanceid + (unichr(subscript + subix) if subix else u'')
@@ -296,9 +313,10 @@ def process(recs, relsink, idbase, logger=logging):
         #    send_instance(ninst)
 
         #ix += 1
-        print >> sys.stderr, '+',
-
+        logger.debug('+')
+        if postprocess: postprocess(rec)
     return
+
 
 def duplicate_statements(model, oldsubject, newsubject):
     for stmt in model.match(oldsubject):

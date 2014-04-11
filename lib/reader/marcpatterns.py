@@ -42,8 +42,8 @@ MATERIALIZE = {
 
 
 MATERIALIZE_VIA_ANNOTATION = {
-#'852': (BOUND_TO_INSTANCE, 'institution', {'marcrType': 'Organization'}),
-'852': ('institution', {'marcrType': 'Organization'}, {'marcrType': 'Holdings'}),
+#'852': ('institution', {'marcrType': 'Organization'}, {'marcrType': 'Holdings'}),
+'852': ('institution', 'Holdings', {'holderType': 'Organization'},),
 }
 
 
