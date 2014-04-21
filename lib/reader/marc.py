@@ -1,4 +1,6 @@
 '''
+marc2bfrdf -v -o /tmp/ph1.ttl -s /tmp/ph1.stats.js -b http://example.org test/resource/princeton-holdings1.xml 2> /tmp/ph1.log
+
 '''
 
 import re
@@ -15,7 +17,6 @@ from amara.lib import U
 from amara.lib import iri
 from amara import namespaces
 from amara.lib.util import coroutine
-
 
 from versa import I
 
@@ -119,8 +120,27 @@ def handle_collection(recs, relsink, idbase, ids=None, logger=logging):
     return
 
 
+FIELD008_STATSINFO = ('field008', '021109s1999    ch acf        000 0 chi d')
+LEADER_STATSINFO = ('leader', '02045nam a2200000 a 4500')
+
+def packedchar_stats(statsinfo, val, stats):
+    '''
+    Update stats for field 008, which is a packed character flag array.
+    Stats are a list with a dict for each 008 character position, mapping characters to count of their appearances at that position
+    '''
+    key, sample = statsinfo
+    if not key in stats:
+        stats[key] = []
+        for i in range(len(sample)):
+            stats[key].append({})
+    for i, c in enumerate(val):
+        stats[key][i].setdefault(c, 0)
+        stats[key][i][c] += 1
+    return
+
+
 @coroutine
-def record_handler(relsink, idbase, ids=None, postprocess=None, logger=logging):
+def record_handler(relsink, idbase, ids=None, postprocess=None, stats=None, logger=logging):
     '''
     
     '''
@@ -180,13 +200,20 @@ def record_handler(relsink, idbase, ids=None, postprocess=None, logger=logging):
         #Instances are added below
         #relsink.add(I(workid), I(iri.absolutize('hasInstance', BFZ)), I(instanceid))
 
+        if stats is not None:
+            stats.setdefault('recordcount', 0)
+            stats['recordcount'] += 1
+
         for row in rec:
             #FIXME: We might not even need val any more
             val = None
             if row[0] == LEADER:
                 leader = row[1]
             elif row[0] == CONTROLFIELD:
-                code, val = row[1:]
+                code, val = row[1].strip(), row[2]
+                if stats is not None:
+                    codes_stats = stats.setdefault('codes', {}).setdefault(code, 0)
+                    stats['codes'][code] += 1
                 key = u'tag-' + code
                 if code == '008':
                     field008 = val
@@ -200,12 +227,22 @@ def record_handler(relsink, idbase, ids=None, postprocess=None, logger=logging):
                     #For now assume all leader fields are instance level
                 #    relsink.add(I(instanceid), I(iri.absolutize(key, BFZ)), val)
             elif row[0] == DATAFIELD:
-                code, xmlattrs, subfields = row[1:]
+                code, xmlattrs, subfields = row[1].strip(), row[2], row[3]
                 key = u'tag-' + code
                 #val = row[2]
 
                 handled = False
-                subfields = dict(( (sf[0], sf[1]) for sf in subfields ))
+                subfields = dict(( (sf[0].strip(), sf[1]) for sf in subfields ))
+                if subfields:
+                    for sf in subfields:
+                        if stats is not None:
+                            codes_stats = stats.setdefault('codes', {}).setdefault(code+u'$'+sf, 0)
+                            stats['codes'][code+u'$'+sf] += 1
+                else:
+                    if stats is not None:
+                        codes_stats = stats.setdefault('codes', {}).setdefault(code, 0)
+                        stats['codes'][code] += 1
+
                 if subfields:
                     lookup = code
                     #See if any of the field codes represents a reference to an object which can be materialized
@@ -230,7 +267,7 @@ def record_handler(relsink, idbase, ids=None, postprocess=None, logger=logging):
                         #for k, v in itertools.chain((u'marccode', code), object_subfields.items(), extra_object_props.items()):
                             relsink.add(I(objectid), I(iri.absolutize(k, BFZ)), v)
 
-                        print >> sys.stderr, '.',
+                        logger.debug('.')
                         handled = True
 
                     #See if any of the field+subfield codes represents a reference to an object which can be materialized
@@ -254,6 +291,7 @@ def record_handler(relsink, idbase, ids=None, postprocess=None, logger=logging):
                                     field_name = FIELD_RENAMINGS[lookup]
                                 #Handle the simple field_name substitution of a label name for a MARC code
                                 subject = instanceid if code in INSTANCE_FIELDS else workid
+                                logger.debug(repr(I(iri.absolutize(field_name, BFZ))))
                                 relsink.add(I(subject), I(iri.absolutize(field_name, BFZ)), v)
 
                 #print >> sys.stderr, lookup, key
@@ -314,6 +352,8 @@ def record_handler(relsink, idbase, ids=None, postprocess=None, logger=logging):
 
         #ix += 1
         logger.debug('+')
+        if stats is not None: packedchar_stats(FIELD008_STATSINFO, field008, stats)
+        if stats is not None: packedchar_stats(LEADER_STATSINFO, leader, stats)
         if postprocess: postprocess(rec)
     return
 
