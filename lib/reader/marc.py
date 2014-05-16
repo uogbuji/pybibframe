@@ -18,9 +18,9 @@ from amara.lib import iri
 from amara import namespaces
 from amara.lib.util import coroutine
 
-from versa import I
+from versa import I, ORIGIN, RELATIONSHIP, TARGET
 
-from bibframe import BFZ, BFLC
+from bibframe import BFZ, BFLC, g_services
 from bibframe.isbnplus import isbn_list
 from bibframe.reader.marcpatterns import MATERIALIZE, MATERIALIZE_VIA_ANNOTATION, FIELD_RENAMINGS, INSTANCE_FIELDS, ANNOTATIONS_FIELDS
 from bibframe.reader.marcextra import process_leader, process_008
@@ -38,6 +38,10 @@ CATLINKFIELD = u'LCCN'
 CACHEDIR = os.path.expanduser('~/tmp')
 
 NON_ISBN_CHARS = re.compile(u'\D')
+
+NEW_RECORD = 'http://bibfra.me/purl/versa/' + 'newrecord'
+
+LABEL_REL = I(iri.absolutize('label', BFZ))
 
 def invert_dict(d):
     #http://code.activestate.com/recipes/252143-invert-a-dictionary-one-liner/#c3
@@ -61,9 +65,10 @@ def invert_dict(d):
 
 #http://findingaids.loc.gov/mastermets/mss/2009/ms009216.xml
 
-PREFIXES = {u'ma': 'http://www.loc.gov/MARC21/slim', u'me': 'http://www.loc.gov/METS/'}
+#PREFIXES = {u'ma': 'http://www.loc.gov/MARC21/slim', u'me': 'http://www.loc.gov/METS/'}
 
 RDFTYPE = I(namespaces.RDF_NAMESPACE + 'type')
+
 
 def idgen(idbase):
     '''
@@ -120,32 +125,26 @@ def handle_collection(recs, relsink, idbase, ids=None, logger=logging):
     return
 
 
-FIELD008_STATSINFO = ('field008', '021109s1999    ch acf        000 0 chi d')
-LEADER_STATSINFO = ('leader', '02045nam a2200000 a 4500')
-
-def packedchar_stats(statsinfo, val, stats):
-    '''
-    Update stats for field 008, which is a packed character flag array.
-    Stats are a list with a dict for each 008 character position, mapping characters to count of their appearances at that position
-    '''
-    key, sample = statsinfo
-    if not key in stats:
-        stats[key] = []
-        for i in range(len(sample)):
-            stats[key].append({})
-    for i, c in enumerate(val):
-        stats[key][i].setdefault(c, 0)
-        stats[key][i][c] += 1
-    return
-
-
 @coroutine
-def record_handler(relsink, idbase, ids=None, postprocess=None, stats=None, logger=logging):
+def record_handler(relsink, idbase, ids=None, postprocess=None, logger=logging, **kwargs):
     '''
     
     '''
     if ids is None: ids = idgen(idbase)
     #FIXME: Use thread local storage rather than function attributes
+
+    #Initialize auxiliary services (i.e. plugins)
+    plugins = []
+    for sid, func in g_services.iteritems():
+        plugins.append(func(
+            sid=sid,
+            model=relsink,
+            idbase=idbase,
+            ids=ids,
+            logger=logger,
+            **kwargs
+        )
+        )
 
     #A few code modularization functions pulled into local context as closures
     def process_materialization(lookup, subfields, code=None):
@@ -155,13 +154,18 @@ def record_handler(relsink, idbase, ids=None, postprocess=None, stats=None, logg
         (subst, extra_props) = MATERIALIZE[lookup]
         if RESOURCE_TYPE in extra_props:
             relsink.add(I(materializedid), RDFTYPE, I(iri.absolutize(extra_props[RESOURCE_TYPE], BFZ)))
-        logger.debug((lookup, subfields, extra_props))
+        #logger.debug((lookup, subfields, extra_props))
 
-        if materializedid in T_prior_materializedids:
+        if materializedid not in T_prior_materializedids:
             #Just bundle in the subfields as they are, to avoid throwing out data. They can be otherwise used or just stripped later on
-            for k, v in itertools.chain((u'marccode', code), subfields.iteritems(), extra_props.iteritems()):
+            #for k, v in itertools.chain(((u'marccode', code),), subfields.iteritems(), extra_props.iteritems()):
+            for k, v in itertools.chain(subfields.iteritems(), extra_props.iteritems()):
                 if k == RESOURCE_TYPE: continue
-                relsink.add(I(materializedid), iri.absolutize(k, BFZ), v)
+                fieldname = 'subfield-' + k
+                if code + k in FIELD_RENAMINGS:
+                    fieldname = FIELD_RENAMINGS[code + k]
+                relsink.add(I(materializedid), iri.absolutize(fieldname, BFZ), v)
+            T_prior_materializedids.add(materializedid)
 
         return materializedid, subst
 
@@ -188,35 +192,35 @@ def record_handler(relsink, idbase, ids=None, postprocess=None, stats=None, logg
 
     while True:
         rec = yield
+        #for plugin in plugins:
+        #    plugin.send(dict(rec=rec))
         leader = None
         #Add work item record
         workid = ids.next()
         relsink.add(I(workid), RDFTYPE, I(iri.absolutize('Work', BFZ)))
         instanceid = ids.next()
-        logger.debug((workid, instanceid))
+        #logger.debug((workid, instanceid))
+        params = {u'workid': workid}
 
         relsink.add(I(instanceid), RDFTYPE, I(iri.absolutize('Instance', BFZ)))
         #relsink.add((instanceid, iri.absolutize('leader', PROPBASE), leader))
         #Instances are added below
         #relsink.add(I(workid), I(iri.absolutize('hasInstance', BFZ)), I(instanceid))
 
-        if stats is not None:
-            stats.setdefault('recordcount', 0)
-            stats['recordcount'] += 1
+        #for service in g_services: service.send(NEW_RECORD, relsink, workid, instanceid)
 
         for row in rec:
             #FIXME: We might not even need val any more
             val = None
+            code = None
+
             if row[0] == LEADER:
-                leader = row[1]
+                params[u'leader'] = leader = row[1]
             elif row[0] == CONTROLFIELD:
                 code, val = row[1].strip(), row[2]
-                if stats is not None:
-                    codes_stats = stats.setdefault('codes', {}).setdefault(code, 0)
-                    stats['codes'][code] += 1
                 key = u'tag-' + code
                 if code == '008':
-                    field008 = val
+                    params[u'field008'] = field008 = val
                 relsink.add(I(instanceid), I(iri.absolutize(key, BFZ)), val)
                 #for sf in subfields:
                 #    sfcode = U(sf.xml_select(u'@code'))
@@ -233,15 +237,7 @@ def record_handler(relsink, idbase, ids=None, postprocess=None, stats=None, logg
 
                 handled = False
                 subfields = dict(( (sf[0].strip(), sf[1]) for sf in subfields ))
-                if subfields:
-                    for sf in subfields:
-                        if stats is not None:
-                            codes_stats = stats.setdefault('codes', {}).setdefault(code+u'$'+sf, 0)
-                            stats['codes'][code+u'$'+sf] += 1
-                else:
-                    if stats is not None:
-                        codes_stats = stats.setdefault('codes', {}).setdefault(code, 0)
-                        stats['codes'][code] += 1
+                params[u'subfields'] = subfields
 
                 if subfields:
                     lookup = code
@@ -291,7 +287,7 @@ def record_handler(relsink, idbase, ids=None, postprocess=None, stats=None, logg
                                     field_name = FIELD_RENAMINGS[lookup]
                                 #Handle the simple field_name substitution of a label name for a MARC code
                                 subject = instanceid if code in INSTANCE_FIELDS else workid
-                                logger.debug(repr(I(iri.absolutize(field_name, BFZ))))
+                                #logger.debug(repr(I(iri.absolutize(field_name, BFZ))))
                                 relsink.add(I(subject), I(iri.absolutize(field_name, BFZ)), v)
 
                 #print >> sys.stderr, lookup, key
@@ -299,6 +295,7 @@ def record_handler(relsink, idbase, ids=None, postprocess=None, stats=None, logg
                     subject = instanceid if code in INSTANCE_FIELDS else workid
                     relsink.add(I(subject), I(iri.absolutize(key, BFZ)), val)
 
+            params[u'code'] = code
 
         special_properties = {}
         for k, v in process_leader(leader):
@@ -306,6 +303,7 @@ def record_handler(relsink, idbase, ids=None, postprocess=None, stats=None, logg
 
         for k, v in process_008(field008):
             special_properties.setdefault(k, set()).add(v)
+        params[u'special_properties'] = special_properties
 
         #We get some repeated values out of leader & 008 processing, and we want to
         #Remove dupes so we did so by working with sets then converting to lists
@@ -327,7 +325,7 @@ def record_handler(relsink, idbase, ids=None, postprocess=None, stats=None, logg
         ISBN_FIELD = u'tag-020'
         isbn_stmts = relsink.match(subj=instanceid, pred=iri.absolutize(ISBN_FIELD, BFZ))
         isbns = [ s[2] for s in isbn_stmts ]
-        logger.debug(list(isbn_list(isbns)))
+        logger.debug('ISBNS: {0}'.format(list(isbn_list(isbns))))
         other_instance_ids = []
         subscript = ord(u'a')
         newid = None
@@ -343,17 +341,21 @@ def record_handler(relsink, idbase, ids=None, postprocess=None, stats=None, logg
         if not other_instance_ids:
             #Make sure it's created as an instance even if it has no ISBN
             relsink.add(I(workid), I(iri.absolutize(u'hasInstance', BFZ)), I(instanceid))
+            params.setdefault(u'instanceids', []).append(instanceid)
 
         for iid in other_instance_ids:
             relsink.add(I(workid), I(iri.absolutize(u'hasInstance', BFZ)), I(iid))
+            params.setdefault(u'instanceids', []).append(iid)
 
         #if newid is None: #No ISBN specified
         #    send_instance(ninst)
 
         #ix += 1
         logger.debug('+')
-        if stats is not None: packedchar_stats(FIELD008_STATSINFO, field008, stats)
-        if stats is not None: packedchar_stats(LEADER_STATSINFO, leader, stats)
+
+        for plugin in plugins:
+            plugin.send(params)
+
         if postprocess: postprocess(rec)
     return
 

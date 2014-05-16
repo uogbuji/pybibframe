@@ -41,15 +41,9 @@ def process(source, target, logger=logging):
     Take an in-memory BIBFRAME model and convert it into an rdflib graph
 
     '''
-    #Start with the works
-    #XXX: What if there are orphan instances?
-    for stmt in source.match(None, RDFTYPE, WORKCLASS):
-        workid = stmt[SUBJECT]
-        [ target.add(prep(wstmt)) for wstmt in source.match(workid) ]
-        #[ target.add(*wstmt[:3]) for wstmt in source.match(workid) ]
-        for wstmt in source.match(workid, INSTANCEREL):
-            instanceid = wstmt[VALUE]
-            [ target.add(prep(wstmt)) for wstmt in source.match(instanceid) ]
-            #target.add(*wstmt[:3])
+    #Hoover up everything with a type
+    for stmt in source.match(None, RDFTYPE, None):
+        rid = stmt[SUBJECT]
+        [ target.add(prep(stmt)) for stmt in source.match(rid) ]
 
     return

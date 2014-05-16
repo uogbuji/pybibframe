@@ -9,10 +9,11 @@ import rdflib
 from amara.thirdparty import httplib2, json
 
 from versa import I, VERSA_BASEIRI
+from versa import util
 from versa.driver import memory
 
-from bibframe import BFZ, BFLC
-from bibframe.reader import marc, marcxml
+from bibframe import BFZ, BFLC, register_service
+from bibframe.reader import marc, marcxml, statsgen
 from bibframe.writer import rdf
 
 
@@ -31,6 +32,9 @@ def run(inputs=None, base=None, out=None, stats=None, verbose=False):
     if verbose:
         logger.setLevel(logging.DEBUG)
 
+    if stats:
+        register_service(statsgen.statshandler)
+
     ids = marc.idgen(base)
     m = memory.connection()
     g = rdflib.Graph()
@@ -43,17 +47,19 @@ def run(inputs=None, base=None, out=None, stats=None, verbose=False):
         rdf.process(m, g, logger=logger)
         m.create_space()
 
-    if stats: stats_struct = {}
+    stats_struct = {}
     for inf in inputs:
         sink = marc.record_handler(m, idbase=base, ids=ids, postprocess=postprocess, stats=stats_struct, logger=logger)
         marcxml.parse_marcxml(inf, sink)
 
     out.write(g.serialize(format="turtle"))
-    json.dump(stats_struct, stats)
+    if stats:
+        json.dump(stats_struct, stats, indent=4)
     return
 
 
 if __name__ == '__main__':
+    #marc2bfrdf -v -o /tmp/lcout.ttl -s /tmp/lcout.stats.js scratch/unpacked/lc-sample-files-20120725.xml 2> /tmp/lcout.log
     #parser = argparse.ArgumentParser(prog="bootstrap", add_help=False)
     parser = argparse.ArgumentParser()
     parser.add_argument('inputs', type=argparse.FileType('r'), metavar='inputs', nargs='+',
