@@ -27,13 +27,21 @@ BFDNS = rdflib.Namespace(BFZ + 'dftag/')
 VNS = rdflib.Namespace(VERSA_BASEIRI)
 
 
-def run(inputs=None, base=None, out=None, stats=None, verbose=False):
+def run(inputs=None, base=None, out=None, config=None, verbose=False, mods=None):
+    if config is None:
+        config = {}
+    else:
+        config = json.load(config)
     logger = logging.getLogger('marc2bfrdf')
     if verbose:
         logger.setLevel(logging.DEBUG)
 
-    if stats:
-        register_service(statsgen.statshandler)
+    for mod in mods or []:
+        __import__(mod, globals(), locals(), [], -1)
+    from bibframe import g_services
+
+    #if stats:
+    #    register_service(statsgen.statshandler)
 
     ids = marc.idgen(base)
     m = memory.connection()
@@ -47,14 +55,25 @@ def run(inputs=None, base=None, out=None, stats=None, verbose=False):
         rdf.process(m, g, logger=logger)
         m.create_space()
 
-    stats_struct = {}
+    #Initialize auxiliary services (i.e. plugins)
+    plugins = []
+    for pc in config[u'plugins']:
+        try:
+            plugins.append(g_services[pc[u'id']](
+                config=pc,
+                logger=logger,
+            )
+            )
+        except KeyError:
+            raise Exception(u'Unknown plugin {0}'.format(pc[u'id']))
+
     for inf in inputs:
-        sink = marc.record_handler(m, idbase=base, ids=ids, postprocess=postprocess, stats=stats_struct, logger=logger)
+        sink = marc.record_handler(m, idbase=base, plugins=plugins, ids=ids, postprocess=postprocess, logger=logger)
         marcxml.parse_marcxml(inf, sink)
 
     out.write(g.serialize(format="turtle"))
-    if stats:
-        json.dump(stats_struct, stats, indent=4)
+    for plugin in plugins:
+        plugin.close()
     return
 
 
@@ -67,18 +86,22 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--out', type=argparse.FileType('w'), default=sys.stdout,
         help='file where output should be written '
              '(default: write to stdout)')
-    parser.add_argument('-s', '--stats', type=argparse.FileType('w'),
-        help='file where statistics output should be written in JSOn format')
+    parser.add_argument('-c', '--config', type=argparse.FileType('r'),
+        help='file containing config in JSON format')
+    #parser.add_argument('-s', '--stats', type=argparse.FileType('w'),
+    #    help='file where statistics output should be written in JSOn format')
     #parser.add_argument('-c', '--config', type=argparse.FileType('r'),
     #    help='config, a Versa file whose config (in the @docheader) should be used to parse the rest')
     parser.add_argument('-b', '--base', metavar="IRI", #dest="base",
         help='Base IRI to be used for creating resources.')
+    parser.add_argument('--mod', metavar="PYMODULE", nargs='*',
+        help='Python module to be imported in order to register plugins.')
     parser.add_argument('-v', '--verbose', action='store_true',
         help='whether to show additional messages and information')
     #
     args = parser.parse_args()
 
-    run(inputs=args.inputs, base=args.base, out=args.out, stats=args.stats, verbose=args.verbose)
+    run(inputs=args.inputs, base=args.base, out=args.out, config=args.config, verbose=args.verbose, mods=args.mod)
     for f in args.inputs: f.close()
     args.out.close()
 

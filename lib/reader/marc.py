@@ -126,25 +126,12 @@ def handle_collection(recs, relsink, idbase, ids=None, logger=logging):
 
 
 @coroutine
-def record_handler(relsink, idbase, ids=None, postprocess=None, logger=logging, **kwargs):
+def record_handler(relsink, idbase, plugins, ids=None, postprocess=None, logger=logging, **kwargs):
     '''
     
     '''
     if ids is None: ids = idgen(idbase)
     #FIXME: Use thread local storage rather than function attributes
-
-    #Initialize auxiliary services (i.e. plugins)
-    plugins = []
-    for sid, func in g_services.iteritems():
-        plugins.append(func(
-            sid=sid,
-            model=relsink,
-            idbase=idbase,
-            ids=ids,
-            logger=logger,
-            **kwargs
-        )
-        )
 
     #A few code modularization functions pulled into local context as closures
     def process_materialization(lookup, subfields, code=None):
@@ -200,7 +187,7 @@ def record_handler(relsink, idbase, ids=None, postprocess=None, logger=logging, 
         relsink.add(I(workid), RDFTYPE, I(iri.absolutize('Work', BFZ)))
         instanceid = ids.next()
         #logger.debug((workid, instanceid))
-        params = {u'workid': workid}
+        params = {u'workid': workid, u'model': relsink}
 
         relsink.add(I(instanceid), RDFTYPE, I(iri.absolutize('Instance', BFZ)))
         #relsink.add((instanceid, iri.absolutize('leader', PROPBASE), leader))

@@ -1,14 +1,10 @@
 '''
-marc2bfrdf -v -o /tmp/ph1.ttl -s /tmp/ph1.stats.js -b http://example.org test/resource/princeton-holdings1.xml 2> /tmp/ph1.log
+cat config.js
+
+{
 
 '''
 
-import re
-import os
-import sys
-import time
-import logging
-import string
 import itertools
 
 from versa import I, ORIGIN, RELATIONSHIP, TARGET
