@@ -57,7 +57,7 @@ def run(inputs=None, base=None, out=None, config=None, verbose=False, mods=None)
 
     #Initialize auxiliary services (i.e. plugins)
     plugins = []
-    for pc in config[u'plugins']:
+    for pc in config.get(u'plugins', []):
         try:
             plugins.append(g_services[pc[u'id']](
                 config=pc,

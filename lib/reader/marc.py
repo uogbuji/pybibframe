@@ -196,9 +196,8 @@ def record_handler(relsink, idbase, plugins, ids=None, postprocess=None, logger=
 
         #for service in g_services: service.send(NEW_RECORD, relsink, workid, instanceid)
 
+        params[u'transforms'] = []
         for row in rec:
-            #FIXME: We might not even need val any more
-            val = None
             code = None
 
             if row[0] == LEADER:
@@ -208,19 +207,11 @@ def record_handler(relsink, idbase, plugins, ids=None, postprocess=None, logger=
                 key = u'tag-' + code
                 if code == '008':
                     params[u'field008'] = field008 = val
+                params[u'transforms'].append((code, key))
                 relsink.add(I(instanceid), I(iri.absolutize(key, BFZ)), val)
-                #for sf in subfields:
-                #    sfcode = U(sf.xml_select(u'@code'))
-                #    sfval = U(sf)
-                    #For now assume all leader fields are instance level
-                #    relsink.add(I(instanceid), I(iri.absolutize(key, BFZ)), sfval)
-                #else:
-                    #For now assume all leader fields are instance level
-                #    relsink.add(I(instanceid), I(iri.absolutize(key, BFZ)), val)
             elif row[0] == DATAFIELD:
                 code, xmlattrs, subfields = row[1].strip(), row[2], row[3]
                 key = u'tag-' + code
-                #val = row[2]
 
                 handled = False
                 subfields = dict(( (sf[0].strip(), sf[1]) for sf in subfields ))
@@ -233,6 +224,7 @@ def record_handler(relsink, idbase, plugins, ids=None, postprocess=None, logger=
                     if code in MATERIALIZE:
                         materializedid, subst = process_materialization(code, subfields)
                         subject = instanceid if code in INSTANCE_FIELDS else workid
+                        params[u'transforms'].append((code, subst))
                         relsink.add(I(subject), I(iri.absolutize(subst, BFZ)), I(materializedid))
                         logger.debug('.')
                         handled = True
@@ -244,6 +236,7 @@ def record_handler(relsink, idbase, plugins, ids=None, postprocess=None, logger=
 
                         subject = instanceid if code in INSTANCE_FIELDS else workid
                         objectid = ids.next()
+                        params[u'transforms'].append((code, subst))
                         relsink.add(I(subject), I(iri.absolutize(subst, BFZ)), I(objectid), {I(iri.absolutize('annotation', BFZ)): I(annotationid)})
 
                         for k, v in itertools.chain(((u'marccode', code),), object_subfields.iteritems()):
@@ -261,6 +254,7 @@ def record_handler(relsink, idbase, plugins, ids=None, postprocess=None, logger=
                                 #XXX At first glance you'd think you can always derive code from lookup (e.g. lookup[:3] but what if e.g. someone trims the left zero fill on the codes in the serialization?
                                 materializedid, subst = process_materialization(lookup, subfields, code=code)
                                 subject = instanceid if code in INSTANCE_FIELDS else workid
+                                params[u'transforms'].append((lookup, subst))
                                 relsink.add(I(subject), I(iri.absolutize(subst, BFZ)), I(materializedid))
 
                                 #Is the MARC code part of the hash computation for the materiaalized object ID? Surely not!
@@ -275,12 +269,13 @@ def record_handler(relsink, idbase, plugins, ids=None, postprocess=None, logger=
                                 #Handle the simple field_name substitution of a label name for a MARC code
                                 subject = instanceid if code in INSTANCE_FIELDS else workid
                                 #logger.debug(repr(I(iri.absolutize(field_name, BFZ))))
+                                params[u'transforms'].append((lookup, field_name))
                                 relsink.add(I(subject), I(iri.absolutize(field_name, BFZ)), v)
 
                 #print >> sys.stderr, lookup, key
-                if val:
-                    subject = instanceid if code in INSTANCE_FIELDS else workid
-                    relsink.add(I(subject), I(iri.absolutize(key, BFZ)), val)
+                #if val:
+                #    subject = instanceid if code in INSTANCE_FIELDS else workid
+                #    relsink.add(I(subject), I(iri.absolutize(key, BFZ)), val)
 
             params[u'code'] = code
 
