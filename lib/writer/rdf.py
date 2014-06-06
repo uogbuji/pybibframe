@@ -3,7 +3,6 @@
 
 import re
 import os
-import sys
 import logging
 import itertools
 
@@ -12,15 +11,13 @@ from rdflib import URIRef, Literal
 
 #from datachef.ids import simple_hashstring
 
-from amara.lib import iri
-from amara import namespaces
+from amara3 import iri
 
-from versa import I, SUBJECT, RELATIONSHIP, VALUE
+from versa import I, VERSA_BASEIRI
 
 from bibframe import BFZ, BFLC
 
-RDFTYPE = namespaces.RDF_NAMESPACE + 'type'
-
+TYPE_REL = I(iri.absolutize('type', VERSA_BASEIRI))
 WORKCLASS = iri.absolutize('Work', BFZ)
 INSTANCECLASS = iri.absolutize('Instance', BFZ)
 INSTANCEREL = iri.absolutize('hasInstance', BFZ)
@@ -42,7 +39,7 @@ def process(source, target, logger=logging):
 
     '''
     #Hoover up everything with a type
-    for stmt in source.match(None, RDFTYPE, None):
+    for stmt in source.match(None, TYPE_REL, None):
         rid = stmt[SUBJECT]
         [ target.add(prep(stmt)) for stmt in source.match(rid) ]
 

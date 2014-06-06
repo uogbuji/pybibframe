@@ -1,5 +1,5 @@
-akara==2.0.0a4
-amara==2
+amara3-iri
 pymarc
 nose
 rdflib
+mmh3

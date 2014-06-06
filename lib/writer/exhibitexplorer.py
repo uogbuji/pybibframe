@@ -2,15 +2,13 @@
 '''
 
 import re
-import os
 import sys
 import logging
 import itertools
 
 #from datachef.ids import simple_hashstring
 
-from amara.lib import iri
-from amara import namespaces
+from amara3 import iri
 
 from versa import SUBJECT, RELATIONSHIP, VALUE
 
@@ -18,6 +16,8 @@ BFV = 'http://bibframe.org/vocab/'
 
 WORKCLASS = iri.absolutize('Work', BFV)
 INSTANCECLASS = iri.absolutize('Instance', BFV)
+
+TYPE_REL = I(iri.absolutize('type', BFZ))
 
 def process(source, work_sink, instance_sink, objects_sink, annotations_sink, logger=logging):
     '''
@@ -230,7 +230,7 @@ def process(source, work_sink, instance_sink, objects_sink, annotations_sink, lo
 
     target = receive_items()
 
-    for stmt in source.match(None, RDFTYPE, WORKCLASS):
+    for stmt in source.match(None, TYPE_REL, WORKCLASS):
         workid = stmt[SUBJECT]
         target.send(workid)
 

@@ -11,7 +11,7 @@ def invert_dict(d):
     #See also: http://pypi.python.org/pypi/bidict
     #Though note: http://code.activestate.com/recipes/576968/#c2
     inv = {}
-    for k, v in d.iteritems():
+    for k, v in d.items():
         keys = inv.setdefault(v, [])
         keys.append(k)
     return inv

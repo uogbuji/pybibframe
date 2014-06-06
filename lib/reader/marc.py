@@ -5,7 +5,7 @@ marc2bfrdf -v -o /tmp/ph1.ttl -s /tmp/ph1.stats.js -b http://example.org test/re
 
 import re
 import os
-import sys
+import json
 import time
 import logging
 import string
@@ -13,12 +13,12 @@ import itertools
 
 from datachef.ids import simple_hashstring
 
-from amara.lib import U
-from amara.lib import iri
-from amara import namespaces
-from amara.lib.util import coroutine
+#from amara.lib import U
+from amara3 import iri
+#from amara import namespaces
+from amara3.util import coroutine
 
-from versa import I, ORIGIN, RELATIONSHIP, TARGET
+from versa import I, VERSA_BASEIRI
 
 from bibframe import BFZ, BFLC, g_services
 from bibframe.isbnplus import isbn_list
@@ -48,7 +48,7 @@ def invert_dict(d):
     #See also: http://pypi.python.org/pypi/bidict
         #Though note: http://code.activestate.com/recipes/576968/#c2
     inv = {}
-    for k, v in d.iteritems():
+    for k, v in d.items():
         keys = inv.setdefault(v, [])
         keys.append(k)
     return inv
@@ -67,7 +67,7 @@ def invert_dict(d):
 
 #PREFIXES = {u'ma': 'http://www.loc.gov/MARC21/slim', u'me': 'http://www.loc.gov/METS/'}
 
-RDFTYPE = I(namespaces.RDF_NAMESPACE + 'type')
+TYPE_REL = I(iri.absolutize('type', BFZ))
 
 
 def idgen(idbase):
@@ -126,7 +126,7 @@ def handle_collection(recs, relsink, idbase, ids=None, logger=logging):
 
 
 @coroutine
-def record_handler(relsink, idbase, plugins, ids=None, postprocess=None, logger=logging, **kwargs):
+def record_handler(relsink, idbase, plugins, ids=None, postprocess=None, out=None, logger=logging, **kwargs):
     '''
     
     '''
@@ -140,13 +140,13 @@ def record_handler(relsink, idbase, plugins, ids=None, postprocess=None, logger=
         if code is None: code = lookup
         (subst, extra_props) = MATERIALIZE[lookup]
         if RESOURCE_TYPE in extra_props:
-            relsink.add(I(materializedid), RDFTYPE, I(iri.absolutize(extra_props[RESOURCE_TYPE], BFZ)))
+            relsink.add(I(materializedid), TYPE_REL, I(iri.absolutize(extra_props[RESOURCE_TYPE], BFZ)))
         #logger.debug((lookup, subfields, extra_props))
 
         if materializedid not in T_prior_materializedids:
             #Just bundle in the subfields as they are, to avoid throwing out data. They can be otherwise used or just stripped later on
-            #for k, v in itertools.chain(((u'marccode', code),), subfields.iteritems(), extra_props.iteritems()):
-            for k, v in itertools.chain(subfields.iteritems(), extra_props.iteritems()):
+            #for k, v in itertools.chain(((u'marccode', code),), subfields.items(), extra_props.items()):
+            for k, v in itertools.chain(subfields.items(), extra_props.items()):
                 if k == RESOURCE_TYPE: continue
                 fieldname = 'subfield-' + k
                 if code + k in FIELD_RENAMINGS:
@@ -166,179 +166,200 @@ def record_handler(relsink, idbase, plugins, ids=None, postprocess=None, logger=
                 annotation_subfields[k] = v
                 del object_subfields[k]
 
-        #objectid = idg.next()
+        #objectid = next(idg)
         #object_props.update(object_subfields)
 
-        annotationid = ids.next()
-        relsink.add(I(annotationid), RDFTYPE, I(iri.absolutize(anntype, BFZ)))
+        annotationid = next(idg)
+        relsink.add(I(annotationid), TYPE_REL, I(iri.absolutize(anntype, BFZ)))
         for k, v in itertools.chain(annotation_subfields.items(), extra_annotation_props.items()):
             relsink.add(I(annotationid), I(iri.absolutize(k, BFZ)), v)
 
         #Return enough info to generate the main subject/object relationship. The annotation is taken care of at this point
         return annotationid, object_subfields
 
-    while True:
-        rec = yield
-        #for plugin in plugins:
-        #    plugin.send(dict(rec=rec))
-        leader = None
-        #Add work item record
-        workid = ids.next()
-        relsink.add(I(workid), RDFTYPE, I(iri.absolutize('Work', BFZ)))
-        instanceid = ids.next()
-        #logger.debug((workid, instanceid))
-        params = {u'workid': workid, u'model': relsink}
+    #Start the process of writing out the JSON representation of the resulting Versa
+    out.write('[')
+    first_record = True
+    try:
+        while True:
+            rec = yield
+            #for plugin in plugins:
+            #    plugin.send(dict(rec=rec))
+            leader = None
+            #Add work item record
+            workid = next(ids)
+            relsink.add(I(workid), TYPE_REL, I(iri.absolutize('Work', BFZ)))
+            instanceid = next(ids)
+            #logger.debug((workid, instanceid))
+            params = {u'workid': workid, u'model': relsink}
 
-        relsink.add(I(instanceid), RDFTYPE, I(iri.absolutize('Instance', BFZ)))
-        #relsink.add((instanceid, iri.absolutize('leader', PROPBASE), leader))
-        #Instances are added below
-        #relsink.add(I(workid), I(iri.absolutize('hasInstance', BFZ)), I(instanceid))
+            relsink.add(I(instanceid), TYPE_REL, I(iri.absolutize('Instance', BFZ)))
+            #relsink.add((instanceid, iri.absolutize('leader', PROPBASE), leader))
+            #Instances are added below
+            #relsink.add(I(workid), I(iri.absolutize('hasInstance', BFZ)), I(instanceid))
 
-        #for service in g_services: service.send(NEW_RECORD, relsink, workid, instanceid)
+            #for service in g_services: service.send(NEW_RECORD, relsink, workid, instanceid)
 
-        params[u'transforms'] = []
-        for row in rec:
-            code = None
+            params[u'transforms'] = []
+            for row in rec:
+                code = None
 
-            if row[0] == LEADER:
-                params[u'leader'] = leader = row[1]
-            elif row[0] == CONTROLFIELD:
-                code, val = row[1].strip(), row[2]
-                key = u'tag-' + code
-                if code == '008':
-                    params[u'field008'] = field008 = val
-                params[u'transforms'].append((code, key))
-                relsink.add(I(instanceid), I(iri.absolutize(key, BFZ)), val)
-            elif row[0] == DATAFIELD:
-                code, xmlattrs, subfields = row[1].strip(), row[2], row[3]
-                key = u'tag-' + code
+                if row[0] == LEADER:
+                    params[u'leader'] = leader = row[1]
+                elif row[0] == CONTROLFIELD:
+                    code, val = row[1].strip(), row[2]
+                    key = u'tag-' + code
+                    if code == '008':
+                        params[u'field008'] = field008 = val
+                    params[u'transforms'].append((code, key))
+                    relsink.add(I(instanceid), I(iri.absolutize(key, BFZ)), val)
+                elif row[0] == DATAFIELD:
+                    code, xmlattrs, subfields = row[1].strip(), row[2], row[3]
+                    key = u'tag-' + code
 
-                handled = False
-                subfields = dict(( (sf[0].strip(), sf[1]) for sf in subfields ))
-                params[u'subfields'] = subfields
+                    handled = False
+                    subfields = dict(( (sf[0].strip(), sf[1]) for sf in subfields ))
+                    params[u'subfields'] = subfields
 
-                if subfields:
-                    lookup = code
-                    #See if any of the field codes represents a reference to an object which can be materialized
+                    if subfields:
+                        lookup = code
+                        #See if any of the field codes represents a reference to an object which can be materialized
 
-                    if code in MATERIALIZE:
-                        materializedid, subst = process_materialization(code, subfields)
-                        subject = instanceid if code in INSTANCE_FIELDS else workid
-                        params[u'transforms'].append((code, subst))
-                        relsink.add(I(subject), I(iri.absolutize(subst, BFZ)), I(materializedid))
-                        logger.debug('.')
-                        handled = True
+                        if code in MATERIALIZE:
+                            materializedid, subst = process_materialization(code, subfields)
+                            subject = instanceid if code in INSTANCE_FIELDS else workid
+                            params[u'transforms'].append((code, subst))
+                            relsink.add(I(subject), I(iri.absolutize(subst, BFZ)), I(materializedid))
+                            logger.debug('.')
+                            handled = True
 
-                    if code in MATERIALIZE_VIA_ANNOTATION:
-                        #FIXME: code comments for extra_object_props & extra_annotation_props
-                        (subst, anntype, extra_annotation_props) = MATERIALIZE_VIA_ANNOTATION[code]
-                        annotationid, object_subfields = process_annotation(anntype, subfields, extra_annotation_props)
+                        if code in MATERIALIZE_VIA_ANNOTATION:
+                            #FIXME: code comments for extra_object_props & extra_annotation_props
+                            (subst, anntype, extra_annotation_props) = MATERIALIZE_VIA_ANNOTATION[code]
+                            annotationid, object_subfields = process_annotation(anntype, subfields, extra_annotation_props)
 
-                        subject = instanceid if code in INSTANCE_FIELDS else workid
-                        objectid = ids.next()
-                        params[u'transforms'].append((code, subst))
-                        relsink.add(I(subject), I(iri.absolutize(subst, BFZ)), I(objectid), {I(iri.absolutize('annotation', BFZ)): I(annotationid)})
+                            subject = instanceid if code in INSTANCE_FIELDS else workid
+                            objectid = next(ids)
+                            params[u'transforms'].append((code, subst))
+                            relsink.add(I(subject), I(iri.absolutize(subst, BFZ)), I(objectid), {I(iri.absolutize('annotation', BFZ)): I(annotationid)})
 
-                        for k, v in itertools.chain(((u'marccode', code),), object_subfields.iteritems()):
-                        #for k, v in itertools.chain((u'marccode', code), object_subfields.items(), extra_object_props.items()):
-                            relsink.add(I(objectid), I(iri.absolutize(k, BFZ)), v)
+                            for k, v in itertools.chain(((u'marccode', code),), object_subfields.items()):
+                            #for k, v in itertools.chain((u'marccode', code), object_subfields.items(), extra_object_props.items()):
+                                relsink.add(I(objectid), I(iri.absolutize(k, BFZ)), v)
 
-                        logger.debug('.')
-                        handled = True
+                            logger.debug('.')
+                            handled = True
 
-                    #See if any of the field+subfield codes represents a reference to an object which can be materialized
-                    if not handled:
-                        for k, v in subfields.items():
-                            lookup = code + k
-                            if lookup in MATERIALIZE:
-                                #XXX At first glance you'd think you can always derive code from lookup (e.g. lookup[:3] but what if e.g. someone trims the left zero fill on the codes in the serialization?
-                                materializedid, subst = process_materialization(lookup, subfields, code=code)
-                                subject = instanceid if code in INSTANCE_FIELDS else workid
-                                params[u'transforms'].append((lookup, subst))
-                                relsink.add(I(subject), I(iri.absolutize(subst, BFZ)), I(materializedid))
+                        #See if any of the field+subfield codes represents a reference to an object which can be materialized
+                        if not handled:
+                            for k, v in subfields.items():
+                                lookup = code + k
+                                if lookup in MATERIALIZE:
+                                    #XXX At first glance you'd think you can always derive code from lookup (e.g. lookup[:3] but what if e.g. someone trims the left zero fill on the codes in the serialization?
+                                    materializedid, subst = process_materialization(lookup, subfields, code=code)
+                                    subject = instanceid if code in INSTANCE_FIELDS else workid
+                                    params[u'transforms'].append((lookup, subst))
+                                    relsink.add(I(subject), I(iri.absolutize(subst, BFZ)), I(materializedid))
 
-                                #Is the MARC code part of the hash computation for the materiaalized object ID? Surely not!
-                                #materializedid = hashid((code,) + tuple(subfields.items()))
-                                logger.debug('.')
-                                handled = True
+                                    #Is the MARC code part of the hash computation for the materiaalized object ID? Surely not!
+                                    #materializedid = hashid((code,) + tuple(subfields.items()))
+                                    logger.debug('.')
+                                    handled = True
 
-                            else:
-                                field_name = u'tag-' + lookup
-                                if lookup in FIELD_RENAMINGS:
-                                    field_name = FIELD_RENAMINGS[lookup]
-                                #Handle the simple field_name substitution of a label name for a MARC code
-                                subject = instanceid if code in INSTANCE_FIELDS else workid
-                                #logger.debug(repr(I(iri.absolutize(field_name, BFZ))))
-                                params[u'transforms'].append((lookup, field_name))
-                                relsink.add(I(subject), I(iri.absolutize(field_name, BFZ)), v)
+                                else:
+                                    field_name = u'tag-' + lookup
+                                    if lookup in FIELD_RENAMINGS:
+                                        field_name = FIELD_RENAMINGS[lookup]
+                                    #Handle the simple field_name substitution of a label name for a MARC code
+                                    subject = instanceid if code in INSTANCE_FIELDS else workid
+                                    #logger.debug(repr(I(iri.absolutize(field_name, BFZ))))
+                                    params[u'transforms'].append((lookup, field_name))
+                                    relsink.add(I(subject), I(iri.absolutize(field_name, BFZ)), v)
 
-                #print >> sys.stderr, lookup, key
-                #if val:
-                #    subject = instanceid if code in INSTANCE_FIELDS else workid
-                #    relsink.add(I(subject), I(iri.absolutize(key, BFZ)), val)
+                    #print >> sys.stderr, lookup, key
+                    #if val:
+                    #    subject = instanceid if code in INSTANCE_FIELDS else workid
+                    #    relsink.add(I(subject), I(iri.absolutize(key, BFZ)), val)
 
-            params[u'code'] = code
+                params[u'code'] = code
 
-        special_properties = {}
-        for k, v in process_leader(leader):
-            special_properties.setdefault(k, set()).add(v)
+            special_properties = {}
+            for k, v in process_leader(leader):
+                special_properties.setdefault(k, set()).add(v)
 
-        for k, v in process_008(field008):
-            special_properties.setdefault(k, set()).add(v)
-        params[u'special_properties'] = special_properties
+            for k, v in process_008(field008):
+                special_properties.setdefault(k, set()).add(v)
+            params[u'special_properties'] = special_properties
 
-        #We get some repeated values out of leader & 008 processing, and we want to
-        #Remove dupes so we did so by working with sets then converting to lists
-        for k, v in special_properties.items():
-            special_properties[k] = list(v)
-            for item in v:
-            #logger.debug(v)
-                relsink.add(I(instanceid), I(iri.absolutize(k, BFZ)), item)
-
-
-        #reduce lists of just one item
-        #for k, v in work_item.items():
-        #    if type(v) is list and len(v) == 1:
-        #        work_item[k] = v[0]
-        #work_sink.send(work_item)
+            #We get some repeated values out of leader & 008 processing, and we want to
+            #Remove dupes so we did so by working with sets then converting to lists
+            for k, v in special_properties.items():
+                special_properties[k] = list(v)
+                for item in v:
+                #logger.debug(v)
+                    relsink.add(I(instanceid), I(iri.absolutize(k, BFZ)), item)
 
 
-        #Handle ISBNs re: https://foundry.zepheira.com/issues/1976
-        ISBN_FIELD = u'tag-020'
-        isbn_stmts = relsink.match(subj=instanceid, pred=iri.absolutize(ISBN_FIELD, BFZ))
-        isbns = [ s[2] for s in isbn_stmts ]
-        logger.debug('ISBNS: {0}'.format(list(isbn_list(isbns))))
-        other_instance_ids = []
-        subscript = ord(u'a')
-        newid = None
-        for subix, (inum, itype) in enumerate(isbn_list(isbns)):
-            #print >> sys.stderr, subix, inum, itype
-            newid = ids.next()
-            duplicate_statements(relsink, instanceid, newid)
-            relsink.add(I(newid), I(iri.absolutize(u'isbn', BFZ)), inum)
-            #subitem[u'id'] = instanceid + (unichr(subscript + subix) if subix else u'')
-            if itype: relsink.add(I(newid), I(iri.absolutize(u'isbnType', BFZ)), itype)
-            other_instance_ids.append(newid)
+            #reduce lists of just one item
+            #for k, v in work_item.items():
+            #    if type(v) is list and len(v) == 1:
+            #        work_item[k] = v[0]
+            #work_sink.send(work_item)
 
-        if not other_instance_ids:
-            #Make sure it's created as an instance even if it has no ISBN
-            relsink.add(I(workid), I(iri.absolutize(u'hasInstance', BFZ)), I(instanceid))
-            params.setdefault(u'instanceids', []).append(instanceid)
 
-        for iid in other_instance_ids:
-            relsink.add(I(workid), I(iri.absolutize(u'hasInstance', BFZ)), I(iid))
-            params.setdefault(u'instanceids', []).append(iid)
+            #Handle ISBNs re: https://foundry.zepheira.com/issues/1976
+            ISBN_FIELD = u'tag-020'
+            isbn_stmts = relsink.match(subj=instanceid, pred=iri.absolutize(ISBN_FIELD, BFZ))
+            isbns = [ s[2] for s in isbn_stmts ]
+            logger.debug('ISBNS: {0}'.format(list(isbn_list(isbns))))
+            other_instance_ids = []
+            subscript = ord(u'a')
+            newid = None
+            for subix, (inum, itype) in enumerate(isbn_list(isbns)):
+                #print >> sys.stderr, subix, inum, itype
+                newid = next(ids)
+                duplicate_statements(relsink, instanceid, newid)
+                relsink.add(I(newid), I(iri.absolutize(u'isbn', BFZ)), inum)
+                #subitem[u'id'] = instanceid + (unichr(subscript + subix) if subix else u'')
+                if itype: relsink.add(I(newid), I(iri.absolutize(u'isbnType', BFZ)), itype)
+                other_instance_ids.append(newid)
 
-        #if newid is None: #No ISBN specified
-        #    send_instance(ninst)
+            if not other_instance_ids:
+                #Make sure it's created as an instance even if it has no ISBN
+                relsink.add(I(workid), I(iri.absolutize(u'hasInstance', BFZ)), I(instanceid))
+                params.setdefault(u'instanceids', []).append(instanceid)
 
-        #ix += 1
-        logger.debug('+')
+            for iid in other_instance_ids:
+                relsink.add(I(workid), I(iri.absolutize(u'hasInstance', BFZ)), I(iid))
+                params.setdefault(u'instanceids', []).append(iid)
 
-        for plugin in plugins:
-            plugin.send(params)
+            #if newid is None: #No ISBN specified
+            #    send_instance(ninst)
 
-        if postprocess: postprocess(rec)
+            #ix += 1
+            logger.debug('+')
+
+            for plugin in plugins:
+                plugin.send(params)
+
+            #Can't really use this because it include outer []
+            #jsondump(relsink, out)
+
+            if not first_record: out.write(',\n')
+            first_record = False
+            last_chunk = None
+            #Using iterencode avoids building a big JSON string in memory, or having to resort to file pointer seeking
+            #Then again builds a big list in memory, so still working on opt here
+            for chunk in json.JSONEncoder().iterencode([ stmt for stmt in relsink ]):
+                if last_chunk is None:
+                    last_chunk = chunk[1:]
+                else:
+                    out.write(last_chunk)
+                    last_chunk = chunk
+            if last_chunk: out.write(last_chunk[:-1])
+            if postprocess: postprocess(rec)
+    except GeneratorExit:
+        out.write(']')
     return
 
 
