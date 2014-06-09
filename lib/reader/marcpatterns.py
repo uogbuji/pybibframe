@@ -35,9 +35,9 @@ MATERIALIZE = {
 '651': ('subject', {'marcrType': 'Geographic'}),
 #'655': ('genre', {'marcrType': 'Genre'}),
 
-'700': ('creator', {'marcrType': 'Person'}),
-'710': ('creator', {'marcrType': 'Organization'}),
-'711': ('creator', {'marcrType': 'Meeting'}),
+'700': ('contributor', {'marcrType': 'Person'}),
+'710': ('contributor', {'marcrType': 'Organization'}),
+'711': ('contributor', {'marcrType': 'Meeting'}),
 }
 
 
@@ -116,7 +116,7 @@ FIELD_RENAMINGS = {
 '502g': 'note',
 '502o': 'note',
 '504a': 'note',
-'505a': 'formatedContentsNote',
+'505a': 'contentsNote',
 '506a': 'note',
 '506b': 'note',
 '506c': 'note',
@@ -225,7 +225,6 @@ WORK_FIELDS = set([
 '500',
 '502',
 '504',
-'505',
 '507',
 '508',
 '511',
@@ -270,6 +269,7 @@ INSTANCE_FIELDS = set([
 '340',
 '351',
 '501',
+'505',
 '510',
 '506',
 '850',
