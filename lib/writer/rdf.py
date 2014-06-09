@@ -13,7 +13,7 @@ from rdflib import URIRef, Literal
 
 from amara3 import iri
 
-from versa import I, VERSA_BASEIRI
+from versa import I, VERSA_BASEIRI, ORIGIN, RELATIONSHIP, TARGET
 
 from bibframe import BFZ, BFLC
 
@@ -40,7 +40,7 @@ def process(source, target, logger=logging):
     '''
     #Hoover up everything with a type
     for stmt in source.match(None, TYPE_REL, None):
-        rid = stmt[SUBJECT]
+        rid = stmt[ORIGIN]
         [ target.add(prep(stmt)) for stmt in source.match(rid) ]
 
     return

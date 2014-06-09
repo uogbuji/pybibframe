@@ -67,7 +67,7 @@ def invert_dict(d):
 
 #PREFIXES = {u'ma': 'http://www.loc.gov/MARC21/slim', u'me': 'http://www.loc.gov/METS/'}
 
-TYPE_REL = I(iri.absolutize('type', BFZ))
+TYPE_REL = I(iri.absolutize('type', VERSA_BASEIRI))
 
 
 def idgen(idbase):
@@ -151,25 +151,29 @@ def record_handler(relsink, idbase, plugins, ids=None, postprocess=None, out=Non
                 fieldname = 'subfield-' + k
                 if code + k in FIELD_RENAMINGS:
                     fieldname = FIELD_RENAMINGS[code + k]
+                    if len(k) == 1: params[u'transforms'].append((code + k, fieldname)) #Only if proper MARC subfield
+                    #params[u'transforms'].append((code + k, FIELD_RENAMINGS.get(sflookup, sflookup)))
                 relsink.add(I(materializedid), iri.absolutize(fieldname, BFZ), v)
             T_prior_materializedids.add(materializedid)
 
         return materializedid, subst
 
 
+    #FIXME: test correct MARC transforms info for annotations
     def process_annotation(anntype, subfields, extra_annotation_props):
         #Separate annotation subfields from object subfields
         object_subfields = subfields.copy()
         annotation_subfields = {}
         for k, v in subfields.items():
-            if code+k in ANNOTATIONS_FIELDS:
+            if code + k in ANNOTATIONS_FIELDS:
                 annotation_subfields[k] = v
                 del object_subfields[k]
+            params[u'transforms'].append((code + k, code + k))
 
         #objectid = next(idg)
         #object_props.update(object_subfields)
 
-        annotationid = next(idg)
+        annotationid = next(ids)
         relsink.add(I(annotationid), TYPE_REL, I(iri.absolutize(anntype, BFZ)))
         for k, v in itertools.chain(annotation_subfields.items(), extra_annotation_props.items()):
             relsink.add(I(annotationid), I(iri.absolutize(k, BFZ)), v)

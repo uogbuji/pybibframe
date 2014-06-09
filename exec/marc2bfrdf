@@ -52,7 +52,7 @@ def run(inputs=None, base=None, out=None, rdfttl=None, config=None, verbose=Fals
 
     def postprocess(rec):
         #No need to bother with Versa -> RDF translation if we were not asked to generate Turtle
-        if rdfttl: rdf.process(m, g, logger=logger)
+        if rdfttl is not None: rdf.process(m, g, logger=logger)
         m.create_space()
 
     #Initialize auxiliary services (i.e. plugins)
@@ -73,7 +73,7 @@ def run(inputs=None, base=None, out=None, rdfttl=None, config=None, verbose=Fals
         #out.seek(-2, 1) #Go back 2 chars from current position
     #out.write(']')
 
-    if rdfttl: rdfttl.write(g.serialize(format="turtle"))
+    if rdfttl is not None: rdfttl.write(g.serialize(format="turtle"))
     for plugin in plugins:
         plugin.close()
     return
@@ -88,7 +88,7 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--out', type=argparse.FileType('w'), default=sys.stdout,
         help='file where raw Versa JSON dump output should be written '
              '(default: write to stdout)')
-    parser.add_argument('-r', '--rdfttl', type=argparse.FileType('w'),
+    parser.add_argument('-r', '--rdfttl', type=argparse.FileType('wb'),
         help='file where RDF Turtle output should be written')
     parser.add_argument('-c', '--config', type=argparse.FileType('r'),
         help='file containing config in JSON format')
