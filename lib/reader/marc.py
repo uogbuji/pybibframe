@@ -32,12 +32,12 @@ DATAFIELD = 2
 #canonicalize_isbns
 #from btframework.augment import lucky_viaf_template, lucky_idlc_template, DEFAULT_AUGMENTATIONS
 
-FALINKFIELD = u'856u'
-#CATLINKFIELD = u'010a'
-CATLINKFIELD = u'LCCN'
+FALINKFIELD = '856'
+#CATLINKFIELD = '010a'
+CATLINKFIELD = 'LCCN'
 CACHEDIR = os.path.expanduser('~/tmp')
 
-NON_ISBN_CHARS = re.compile(u'\D')
+NON_ISBN_CHARS = re.compile('\D')
 
 NEW_RECORD = 'http://bibfra.me/purl/versa/' + 'newrecord'
 
@@ -65,7 +65,7 @@ def invert_dict(d):
 
 #http://findingaids.loc.gov/mastermets/mss/2009/ms009216.xml
 
-#PREFIXES = {u'ma': 'http://www.loc.gov/MARC21/slim', u'me': 'http://www.loc.gov/METS/'}
+#PREFIXES = {'ma': 'http://www.loc.gov/MARC21/slim', 'me': 'http://www.loc.gov/METS/'}
 
 TYPE_REL = I(iri.absolutize('type', VERSA_BASEIRI))
 
@@ -97,16 +97,16 @@ def instancegen(isbns):
     '''
     Default handling of the idea of splitting a MARC record with FRBR Work info as well as instances signalled by ISBNs
     '''
-    base_instance_id = instance_item[u'id']
+    base_instance_id = instance_item['id']
     instance_ids = []
-    subscript = ord(u'a')
+    subscript = ord('a')
     for subix, (inum, itype) in enumerate(isbn_list(isbns)):
         #print >> sys.stderr, subix, inum, itype
         subitem = instance_item.copy()
-        subitem[u'isbn'] = inum
-        subitem[u'id'] = base_instance_id + (unichr(subscript + subix) if subix else u'')
-        if itype: subitem[u'isbnType'] = itype
-        instance_ids.append(subitem[u'id'])
+        subitem['isbn'] = inum
+        subitem['id'] = base_instance_id + (unichr(subscript + subix) if subix else '')
+        if itype: subitem['isbnType'] = itype
+        instance_ids.append(subitem['id'])
         new_instances.append(subitem)
 
 
@@ -145,14 +145,14 @@ def record_handler(relsink, idbase, plugins, ids=None, postprocess=None, out=Non
 
         if materializedid not in T_prior_materializedids:
             #Just bundle in the subfields as they are, to avoid throwing out data. They can be otherwise used or just stripped later on
-            #for k, v in itertools.chain(((u'marccode', code),), subfields.items(), extra_props.items()):
+            #for k, v in itertools.chain((('marccode', code),), subfields.items(), extra_props.items()):
             for k, v in itertools.chain(subfields.items(), extra_props.items()):
                 if k == RESOURCE_TYPE: continue
                 fieldname = 'subfield-' + k
                 if code + k in FIELD_RENAMINGS:
                     fieldname = FIELD_RENAMINGS[code + k]
-                    if len(k) == 1: params[u'transforms'].append((code + k, fieldname)) #Only if proper MARC subfield
-                    #params[u'transforms'].append((code + k, FIELD_RENAMINGS.get(sflookup, sflookup)))
+                    if len(k) == 1: params['transforms'].append((code + k, fieldname)) #Only if proper MARC subfield
+                    #params['transforms'].append((code + k, FIELD_RENAMINGS.get(sflookup, sflookup)))
                 relsink.add(I(materializedid), iri.absolutize(fieldname, BFZ), v)
             T_prior_materializedids.add(materializedid)
 
@@ -168,7 +168,7 @@ def record_handler(relsink, idbase, plugins, ids=None, postprocess=None, out=Non
             if code + k in ANNOTATIONS_FIELDS:
                 annotation_subfields[k] = v
                 del object_subfields[k]
-            params[u'transforms'].append((code + k, code + k))
+            params['transforms'].append((code + k, code + k))
 
         #objectid = next(idg)
         #object_props.update(object_subfields)
@@ -195,7 +195,7 @@ def record_handler(relsink, idbase, plugins, ids=None, postprocess=None, out=Non
             relsink.add(I(workid), TYPE_REL, I(iri.absolutize('Work', BFZ)))
             instanceid = next(ids)
             #logger.debug((workid, instanceid))
-            params = {u'workid': workid, u'model': relsink}
+            params = {'workid': workid, 'model': relsink}
 
             relsink.add(I(instanceid), TYPE_REL, I(iri.absolutize('Instance', BFZ)))
             #relsink.add((instanceid, iri.absolutize('leader', PROPBASE), leader))
@@ -204,26 +204,26 @@ def record_handler(relsink, idbase, plugins, ids=None, postprocess=None, out=Non
 
             #for service in g_services: service.send(NEW_RECORD, relsink, workid, instanceid)
 
-            params[u'transforms'] = [] # set()
+            params['transforms'] = [] # set()
             for row in rec:
                 code = None
 
                 if row[0] == LEADER:
-                    params[u'leader'] = leader = row[1]
+                    params['leader'] = leader = row[1]
                 elif row[0] == CONTROLFIELD:
                     code, val = row[1].strip(), row[2]
-                    key = u'tag-' + code
+                    key = 'tag-' + code
                     if code == '008':
-                        params[u'field008'] = field008 = val
-                    params[u'transforms'].append((code, key))
+                        params['field008'] = field008 = val
+                    params['transforms'].append((code, key))
                     relsink.add(I(instanceid), I(iri.absolutize(key, BFZ)), val)
                 elif row[0] == DATAFIELD:
                     code, xmlattrs, subfields = row[1].strip(), row[2], row[3]
-                    key = u'tag-' + code
+                    key = 'tag-' + code
 
                     handled = False
                     subfields = dict(( (sf[0].strip(), sf[1]) for sf in subfields ))
-                    params[u'subfields'] = subfields
+                    params['subfields'] = subfields
 
                     if subfields:
                         lookup = code
@@ -232,7 +232,7 @@ def record_handler(relsink, idbase, plugins, ids=None, postprocess=None, out=Non
                         if code in MATERIALIZE:
                             materializedid, subst = process_materialization(code, subfields)
                             subject = instanceid if code in INSTANCE_FIELDS else workid
-                            params[u'transforms'].append((code, subst))
+                            params['transforms'].append((code, subst))
                             relsink.add(I(subject), I(iri.absolutize(subst, BFZ)), I(materializedid))
                             logger.debug('.')
                             handled = True
@@ -244,11 +244,11 @@ def record_handler(relsink, idbase, plugins, ids=None, postprocess=None, out=Non
 
                             subject = instanceid if code in INSTANCE_FIELDS else workid
                             objectid = next(ids)
-                            params[u'transforms'].append((code, subst))
+                            params['transforms'].append((code, subst))
                             relsink.add(I(subject), I(iri.absolutize(subst, BFZ)), I(objectid), {I(iri.absolutize('annotation', BFZ)): I(annotationid)})
 
-                            for k, v in itertools.chain(((u'marccode', code),), object_subfields.items()):
-                            #for k, v in itertools.chain((u'marccode', code), object_subfields.items(), extra_object_props.items()):
+                            for k, v in itertools.chain((('marccode', code),), object_subfields.items()):
+                            #for k, v in itertools.chain(('marccode', code), object_subfields.items(), extra_object_props.items()):
                                 relsink.add(I(objectid), I(iri.absolutize(k, BFZ)), v)
 
                             logger.debug('.')
@@ -262,7 +262,7 @@ def record_handler(relsink, idbase, plugins, ids=None, postprocess=None, out=Non
                                     #XXX At first glance you'd think you can always derive code from lookup (e.g. lookup[:3] but what if e.g. someone trims the left zero fill on the codes in the serialization?
                                     materializedid, subst = process_materialization(lookup, subfields, code=code)
                                     subject = instanceid if code in INSTANCE_FIELDS else workid
-                                    params[u'transforms'].append((lookup, subst))
+                                    params['transforms'].append((lookup, subst))
                                     relsink.add(I(subject), I(iri.absolutize(subst, BFZ)), I(materializedid))
 
                                     #Is the MARC code part of the hash computation for the materiaalized object ID? Surely not!
@@ -271,13 +271,13 @@ def record_handler(relsink, idbase, plugins, ids=None, postprocess=None, out=Non
                                     handled = True
 
                                 else:
-                                    field_name = u'tag-' + lookup
+                                    field_name = 'tag-' + lookup
                                     if lookup in FIELD_RENAMINGS:
                                         field_name = FIELD_RENAMINGS[lookup]
                                     #Handle the simple field_name substitution of a label name for a MARC code
                                     subject = instanceid if code in INSTANCE_FIELDS else workid
                                     #logger.debug(repr(I(iri.absolutize(field_name, BFZ))))
-                                    params[u'transforms'].append((lookup, field_name))
+                                    params['transforms'].append((lookup, field_name))
                                     relsink.add(I(subject), I(iri.absolutize(field_name, BFZ)), v)
 
                     #print >> sys.stderr, lookup, key
@@ -285,7 +285,7 @@ def record_handler(relsink, idbase, plugins, ids=None, postprocess=None, out=Non
                     #    subject = instanceid if code in INSTANCE_FIELDS else workid
                     #    relsink.add(I(subject), I(iri.absolutize(key, BFZ)), val)
 
-                params[u'code'] = code
+                params['code'] = code
 
             special_properties = {}
             for k, v in process_leader(leader):
@@ -293,7 +293,7 @@ def record_handler(relsink, idbase, plugins, ids=None, postprocess=None, out=Non
 
             for k, v in process_008(field008):
                 special_properties.setdefault(k, set()).add(v)
-            params[u'special_properties'] = special_properties
+            params['special_properties'] = special_properties
 
             #We get some repeated values out of leader & 008 processing, and we want to
             #Remove dupes so we did so by working with sets then converting to lists
@@ -312,30 +312,30 @@ def record_handler(relsink, idbase, plugins, ids=None, postprocess=None, out=Non
 
 
             #Handle ISBNs re: https://foundry.zepheira.com/issues/1976
-            ISBN_FIELD = u'tag-020'
+            ISBN_FIELD = 'tag-020'
             isbn_stmts = relsink.match(subj=instanceid, pred=iri.absolutize(ISBN_FIELD, BFZ))
             isbns = [ s[2] for s in isbn_stmts ]
             logger.debug('ISBNS: {0}'.format(list(isbn_list(isbns))))
             other_instance_ids = []
-            subscript = ord(u'a')
+            subscript = ord('a')
             newid = None
             for subix, (inum, itype) in enumerate(isbn_list(isbns)):
                 #print >> sys.stderr, subix, inum, itype
                 newid = next(ids)
                 duplicate_statements(relsink, instanceid, newid)
-                relsink.add(I(newid), I(iri.absolutize(u'isbn', BFZ)), inum)
-                #subitem[u'id'] = instanceid + (unichr(subscript + subix) if subix else u'')
-                if itype: relsink.add(I(newid), I(iri.absolutize(u'isbnType', BFZ)), itype)
+                relsink.add(I(newid), I(iri.absolutize('isbn', BFZ)), inum)
+                #subitem['id'] = instanceid + (unichr(subscript + subix) if subix else '')
+                if itype: relsink.add(I(newid), I(iri.absolutize('isbnType', BFZ)), itype)
                 other_instance_ids.append(newid)
 
             if not other_instance_ids:
                 #Make sure it's created as an instance even if it has no ISBN
-                relsink.add(I(workid), I(iri.absolutize(u'hasInstance', BFZ)), I(instanceid))
-                params.setdefault(u'instanceids', []).append(instanceid)
+                relsink.add(I(workid), I(iri.absolutize('hasInstance', BFZ)), I(instanceid))
+                params.setdefault('instanceids', []).append(instanceid)
 
             for iid in other_instance_ids:
-                relsink.add(I(workid), I(iri.absolutize(u'hasInstance', BFZ)), I(iid))
-                params.setdefault(u'instanceids', []).append(iid)
+                relsink.add(I(workid), I(iri.absolutize('hasInstance', BFZ)), I(iid))
+                params.setdefault('instanceids', []).append(iid)
 
             #if newid is None: #No ISBN specified
             #    send_instance(ninst)
