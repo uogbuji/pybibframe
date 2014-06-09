@@ -80,6 +80,7 @@ FIELD_RENAMINGS = {
 '245b': 'titleRemainder',
 '245c': 'titleStatement',
 '245f': 'titleInclusiveDates',
+'245h': 'titleMedium',
 '245n': 'titleNumberParts',
 '245p': 'titleNameParts',
 '247a': 'formerTitle',
@@ -143,6 +144,7 @@ FIELD_RENAMINGS = {
 '521b': 'note',
 '522a': 'coverage',
 '525a': 'note',
+'538a': 'systemDetailsNote',
 
 '600a': 'label',
 '600d': 'date',

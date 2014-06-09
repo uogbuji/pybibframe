@@ -204,7 +204,7 @@ def record_handler(relsink, idbase, plugins, ids=None, postprocess=None, out=Non
 
             #for service in g_services: service.send(NEW_RECORD, relsink, workid, instanceid)
 
-            params[u'transforms'] = []
+            params[u'transforms'] = [] # set()
             for row in rec:
                 code = None
 
