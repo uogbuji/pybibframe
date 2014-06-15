@@ -1,13 +1,11 @@
 '''
 Declarations used to elucidate MARC model
 '''
-
 #Just set up some flags
 #BOUND_TO_WORK = object()
-#BOUND_TO_INSTANCE = object()’
+#BOUND_TO_INSTANCE = object()
 
 #Full MARC field list: http://www.loc.gov/marc/bibliographic/ecbdlist.html
-
 
 MATERIALIZE = {
 '100': ('creator', {'marcrType': 'Person'}),
@@ -39,6 +37,8 @@ MATERIALIZE = {
 '700': ('contributor', {'marcrType': 'Person'}),
 '710': ('contributor', {'marcrType': 'Organization'}),
 '711': ('contributor', {'marcrType': 'Meeting'}),
+
+'740': ('contributor', {'marcrType': 'Person'}),
 }
 
 
@@ -49,34 +49,45 @@ MATERIALIZE_VIA_ANNOTATION = {
 
 
 FIELD_RENAMINGS = {
+# where do we put LDR info, e.g. LDR 07 / 19 positions = mode of issuance
 '010a': 'lccn',
 #Don't do a simple field renaming of ISBN because
+'017a': 'legalDeposit',
+'019a': 'bfp:localControlNumber,
 #'020a': 'isbn',
 '022a': 'issn',
+'024a': 'bfp:otherControlNumber',
+'025a': 'lcOverseasAcq',
 '034a': 'cartographicMathematicalDataScaleStatement', #Rebecca & Sally suggested this should effectively be a merge with 034a
 '034b': 'cartographicMathematicalDataProjectionStatement',
 '034c': 'cartographicMathematicalDataCoordinateStatement',
+'035a': 'systemControlNumber',
+'037a': 'stockNumber',
+'040a': 'catalogingSource',
 '050a': 'lcCallNumber',
+'050b': 'lcItemNumber',
 '0503': 'material',
+'060a': 'bfp:nlmCallNumber.',
+'060b': 'bfp:nlmItemNumber',
+'061a': 'bfp:nlmCopyStatement',
+'070a': 'bfp:nalCallNumber.',
+'070b': 'bfp:nalItemNumber', 
+'071a': 'bfp:nalCopyStatement',
 '082a': 'deweyNumber',
-
 '100a': 'label',
 '100b': 'numeration',
 '100c': 'titles',
-'100d': 'date',  #Note: there has been discussion about removing this, but we're no sure we get reliable ID.LOC lookups without it.  If it is removed, update augment.py 
+'100d': 'date',  #Note: there has been discussion about removing this, but we are not sure we get reliable ID.LOC lookups without it.  If it is removed, update augment.py 
 '110a': 'label',
 '110d': 'date',
 '111a': 'label',
 '111d': 'date',
-
 '130a': 'label',
 '240a': 'label',
 '730a': 'label',
 '830a': 'label',
-
 '130l': 'language',
 '041a': 'language',
-
 '210a': 'abbreviatedTitle',
 '222a': 'keyTitle',
 '240d': 'legalDate',
@@ -85,12 +96,12 @@ FIELD_RENAMINGS = {
 '240r': 'musicKey',
 '245a': 'title',
 '245b': 'subtitle',
-'245c': 'titleStatement',
-'245f': 'titleInclusiveDates',
-'245h': 'titleMedium',
-'245k': 'designatedForm',
-'245n': 'titleNumberParts',
-'245p': 'titleNameParts',
+'245c': 'Statement',
+'245f': 'InclusiveDates',
+'245h': 'Medium',
+'245k': 'formDesignation',
+'246a': 'titleVariation',
+'246f': 'titleVariationDate',
 '247a': 'formerTitle',
 '250a': 'edition',
 '250b': 'edition',
@@ -101,11 +112,13 @@ FIELD_RENAMINGS = {
 '256a': 'computerFilecharacteristics',
 '260a': 'label',
 '260b': 'label',
-'260c': 'date',
+'260c': 'copyrightDate',
 '260e': 'place',
 '260f': 'label',
 '260g': 'date',
-
+'264a': 'providerPlace',
+'264b': 'providerName',
+'264c': 'providerDate', 
 '300a': 'extent',
 '300b': 'physicalDesc',
 '300c': 'dimensions',
@@ -116,8 +129,14 @@ FIELD_RENAMINGS = {
 '310a': 'publicationFrequency',
 '310b': 'publicationDateFrequency',
 '336a': 'contentCategory'
+'336b': 'contentTypeCode',
+'3362': 'bfp:contentTypeRDAsource',
 '337a': 'mediaCategory',
-'338a': 'carrierCategory
+'337b': 'mediaTypeCode',
+'3372': 'bfp:medaiRDAsource',
+'338a': 'carrierCategory',
+'338b': 'bpf:carrierCategoryCode',
+'3382': 'bpf:carrierRDASource',
 '340a': 'physicalSubstance',
 '340b': 'dimensions',
 '340c': 'materialsApplied',
@@ -127,18 +146,14 @@ FIELD_RENAMINGS = {
 '351b': 'arrangement',
 '351c': 'hierarchy',
 '3513': 'materialsSpec',
-
-
 '490a': 'seriesStatement',
 '490v': 'seriesVolume',
-
-
-
 '500a': 'note',
 '501a': 'note',
 '502a': 'dissertationNote',
 '502b': 'degree',
 '502c': 'grantingInstitution',
+'502d': 'dissertationYear',
 '502g': 'dissertationNote', 
 '502o': 'dissertationID',
 '504a': 'bibliographyNote',
@@ -170,14 +185,31 @@ FIELD_RENAMINGS = {
 '520b': 'summaryExpansion',
 '520c': 'assigningSource',
 '520u': 'summaryURI',
-'521a': 'targetAudience',
-'521b': 'targetAudienceSource', 
+'521a': 'intendedAudience',
+'521b': 'intendedAudienceSource', 
 '522a': 'geograhpicCoverage',
 '525a': 'supplement',
 '538a': 'systemDetails',
 '526a': 'studyProgramName',
 '526b': 'interestLevel',
 '526c': 'readingLevel',
+'530a': 'additionalPhysicalform',
+'533a': 'reproductionNote',
+'534a': 'originalVersionNote',
+'535a': 'locationOforiginals/Duplicates',
+'536a': 'fundinIInformation',
+'538a': 'systemDetails',
+'540a': 'termsGoverningUse',
+'541a': 'immediateSourceOfAcquisition',
+'542a': 'informationRelatingToCopyrightStatus',
+'544a': 'locationOfOtherArchivalMaterial',
+'545a': 'biographicalOrHistoricalData',
+'546a': 'languageNote',
+'547a': 'formerTitleComplexity',
+'550a': 'issuingBody',
+'552a': 'entityAndAttributeInformation',
+'555a': 'cumulative IndexFindingAids',
+'556a': 'informationAboutDocumentation',
 '561a': 'ownership', 
 '583a': 'action',
 '600a': 'label',
@@ -190,27 +222,23 @@ FIELD_RENAMINGS = {
 '651d': 'date',
 '630a': 'uniformTitle',
 '630l': 'language',
-
 '630a': 'label',
 '630h': 'medium',
 '630v': 'formSubdivision',
 '630x': 'generalSubdivision',
 '630y': 'chronologicalSubdivision',
 '630z': 'geographicSubdivision',
-
 '650a': 'label',
 '650c': 'locationOfEvent',
 '650v': 'formSubdivision',
 '650x': 'generalSubdivision',
 '650y': 'chronologicalSubdivision',
 '650z': 'geographicSubdivision',
-
 '651a': 'label',
 '651v': 'formSubdivision',
 '651x': 'generalSubdivision',
 '651y': 'chronologicalSubdivision',
 '651z': 'geographicSubdivision',
-
 '700a': 'label',
 '700b': 'numeration',
 '700c': 'titles',
@@ -219,14 +247,13 @@ FIELD_RENAMINGS = {
 '710d': 'date',
 '711a': 'label',
 '711d': 'date',
-
+'880a': 'title',
 #'852a': 'institution',
 '852a': 'label',
 '852h': 'callNumber', #Need to verify this one, since it seems to contradict the rest of the 852 pattern
 '852n': 'code',
 '852u': 'link',
 '852e': 'streetAddress',
-
 '856u': 'link',
 }
 
@@ -251,6 +278,7 @@ WORK_FIELDS = set([
 '245',
 '245',
 '246',
+'264',
 '247',
 '310',
 '310',
@@ -281,6 +309,8 @@ WORK_FIELDS = set([
 '710',
 '711',
 '730',
+'740',
+'880',
 ])
 
 
