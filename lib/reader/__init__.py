@@ -1,1 +1,1 @@
-# bibframe.reader
+# bibframe.plugin

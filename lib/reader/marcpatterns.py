@@ -53,7 +53,7 @@ FIELD_RENAMINGS = {
 '010a': 'lccn',
 #Don't do a simple field renaming of ISBN because
 '017a': 'legalDeposit',
-'019a': 'bfp:localControlNumber,
+'019a': 'bfp:localControlNumber',
 #'020a': 'isbn',
 '022a': 'issn',
 '024a': 'bfp:otherControlNumber',
@@ -128,7 +128,7 @@ FIELD_RENAMINGS = {
 '3003': 'materials',
 '310a': 'publicationFrequency',
 '310b': 'publicationDateFrequency',
-'336a': 'contentCategory'
+'336a': 'contentCategory',
 '336b': 'contentTypeCode',
 '3362': 'bfp:contentTypeRDAsource',
 '337a': 'mediaCategory',
