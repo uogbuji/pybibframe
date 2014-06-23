@@ -208,7 +208,7 @@ FIELD_RENAMINGS = {
 '547a': 'formerTitleComplexity',
 '550a': 'issuingBody',
 '552a': 'entityAndAttributeInformation',
-'555a': 'cumulative IndexFindingAids',
+'555a': 'cumulativeIndexFindingAids',
 '556a': 'informationAboutDocumentation',
 '561a': 'ownership', 
 '583a': 'action',

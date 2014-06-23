@@ -3,3 +3,4 @@ pymarc
 nose
 rdflib
 mmh3
+versa

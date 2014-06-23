@@ -49,6 +49,11 @@ Where the contents of config1.json might be:
 
 Which in this case will generate, in addition to the regular outputs will create a file named `linkreport.html` listing any resource fields in the form of URIs.
 
+## If you just have MARC21 to start with
+
+Use [yaz-marcdump](http://www.indexdata.com/yaz/doc/yaz-marcdump.html), e.g.:
+
+    yaz-marcdump -f MARC-8 -t UTF-8 -o marcxml marc21.raw >marcxml.xml
 
 # See also
 
