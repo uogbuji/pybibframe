@@ -1,82 +1,14 @@
 #!/usr/bin/env python
 
-import json
 import sys
-import logging
 import argparse
 
-import rdflib
-
-from versa import I, VERSA_BASEIRI
-from versa import util
-from versa.driver import memory
-
-from bibframe import BFZ, BFLC, register_service
-from bibframe.reader import marc, marcxml
-from bibframe.writer import rdf
+from bibframe.reader.marcxml import bfconvert
 
 
 #PREFIXES = {u'ma': 'http://www.loc.gov/MARC21/slim', u'me': 'http://www.loc.gov/METS/'}
 
 #XXX: This refusal of rdflib to serialize without NS bindings set is really f@cking annoying [...to be fair seems not a problem for turtle output
-
-BFNS = rdflib.Namespace(BFZ)
-BFCNS = rdflib.Namespace(BFZ + 'cftag/')
-BFDNS = rdflib.Namespace(BFZ + 'dftag/')
-VNS = rdflib.Namespace(VERSA_BASEIRI)
-
-
-def run(inputs=None, base=None, out=None, rdfttl=None, config=None, verbose=False, mods=None):
-    if config is None:
-        config = {}
-    else:
-        config = json.load(config)
-    logger = logging.getLogger('marc2bfrdf')
-    if verbose:
-        logger.setLevel(logging.DEBUG)
-
-    for mod in mods or []:
-        __import__(mod, globals(), locals(), [])
-    from bibframe import g_services
-
-    #if stats:
-    #    register_service(statsgen.statshandler)
-
-    ids = marc.idgen(base)
-    m = memory.connection()
-    g = rdflib.Graph()
-    g.bind('bf', BFNS)
-    g.bind('bfc', BFCNS)
-    g.bind('bfd', BFDNS)
-    g.bind('v', VNS)
-
-    def postprocess(rec):
-        #No need to bother with Versa -> RDF translation if we were not asked to generate Turtle
-        if rdfttl is not None: rdf.process(m, g, logger=logger)
-        m.create_space()
-
-    #Initialize auxiliary services (i.e. plugins)
-    plugins = []
-    for pc in config.get(u'plugins', []):
-        try:
-            plugins.append(g_services[pc[u'id']](
-                config=pc,
-                logger=logger,
-            )
-            )
-        except KeyError:
-            raise Exception(u'Unknown plugin {0}'.format(pc[u'id']))
-
-    for inf in inputs:
-        sink = marc.record_handler(m, idbase=base, plugins=plugins, ids=ids, postprocess=postprocess, out=out, logger=logger)
-        marcxml.parse_marcxml(inf, sink)
-        #out.seek(-2, 1) #Go back 2 chars from current position
-    #out.write(']')
-
-    if rdfttl is not None: rdfttl.write(g.serialize(format="turtle"))
-    for plugin in plugins:
-        plugin.close()
-    return
 
 
 if __name__ == '__main__':
@@ -94,8 +26,8 @@ if __name__ == '__main__':
         help='file containing config in JSON format')
     #parser.add_argument('-s', '--stats', type=argparse.FileType('w'),
     #    help='file where statistics output should be written in JSOn format')
-    #parser.add_argument('-c', '--config', type=argparse.FileType('r'),
-    #    help='config, a Versa file whose config (in the @docheader) should be used to parse the rest')
+    parser.add_argument('-l', '--limit', metavar="NUMBER",
+        help='Limit the number of records processed to this number. If omitted, all records will be processed.')
     parser.add_argument('-b', '--base', metavar="IRI", #dest="base",
         help='Base IRI to be used for creating resources.')
     parser.add_argument('--mod', metavar="PYMODULE", nargs='*',
@@ -105,7 +37,7 @@ if __name__ == '__main__':
     #
     args = parser.parse_args()
 
-    run(inputs=args.inputs, base=args.base, out=args.out, rdfttl=args.rdfttl, config=args.config, verbose=args.verbose, mods=args.mod)
+    bfconvert(inputs=args.inputs, base=args.base, out=args.out, limit=args.limit, rdfttl=args.rdfttl, config=args.config, verbose=args.verbose, mods=args.mod)
     for f in args.inputs: f.close()
     args.out.close()
 

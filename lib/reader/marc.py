@@ -126,10 +126,11 @@ def handle_collection(recs, relsink, idbase, ids=None, logger=logging):
 
 
 @coroutine
-def record_handler(relsink, idbase, plugins, ids=None, postprocess=None, out=None, logger=logging, **kwargs):
+def record_handler(relsink, idbase, limiting=None, plugins=None, ids=None, postprocess=None, out=None, logger=logging, **kwargs):
     '''
-    
+    limiting - a mutable pair of [count, limit] used to control the number of records processed
     '''
+    plugins = plugins or []
     if ids is None: ids = idgen(idbase)
     #FIXME: Use thread local storage rather than function attributes
 
@@ -362,6 +363,11 @@ def record_handler(relsink, idbase, plugins, ids=None, postprocess=None, out=Non
                     last_chunk = chunk
             if last_chunk: out.write(last_chunk[:-1])
             if postprocess: postprocess(rec)
+            if limiting is not None:
+                limiting[0] += 1
+                if limiting[0] >= limiting[1]:
+                    break
+        logger.debug('Completed processing {0} record{1}.'.format(limiting[0], '' if limiting[0] == 1 else 's'))
     except GeneratorExit:
         out.write(']')
     return

@@ -12,7 +12,7 @@ Then install pybibframe:
 
 # Usage
 
-## Converting MARC/XML to RDF or Versa output
+## Converting MARC/XML to RDF or Versa output (command line)
 
 Note: Versa is a model for Web resources and relationships. Think of it as an evolution of Resource Description Framework (RDF) that's at once simpler and more expressive. It's the default internal representation for PyBibframe, though regular RDF is an optional output.
 
@@ -49,11 +49,16 @@ Where the contents of config1.json might be:
 
 Which in this case will generate, in addition to the regular outputs will create a file named `linkreport.html` listing any resource fields in the form of URIs.
 
-## If you just have MARC21 to start with
 
-Use [yaz-marcdump](http://www.indexdata.com/yaz/doc/yaz-marcdump.html), e.g.:
+# Converting MARC/XML to RDF or Versa output (API)
 
-    yaz-marcdump -f MARC-8 -t UTF-8 -o marcxml marc21.raw >marcxml.xml
+The `bibframe.reader.marcxml.bfconvert` method can be used from APIs etc to run the conversion.
+
+	>>> from bibframe.reader.marcxml import bfconvert
+	>>> inputs = open('records.mrx', 'r')
+	>>> out = open('resorces.versa.json', 'w')
+	>>> bfconvert(inputs=inputs, base='http://example.org', out=out)
+
 
 # See also
 

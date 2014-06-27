@@ -2,7 +2,11 @@
 For processing MARC/XML
 Uses SAX for streaming process
 Notice however, possible security vulnerabilities:
+https://docs.python.org/3/library/xml.html#xml-vulnerabilities
 '''
+
+import json
+import logging
 
 from xml import sax
 #from xml.sax.handler import ContentHandler
@@ -10,6 +14,21 @@ from xml import sax
 
 #from bibframe.contrib.xmlutil import normalize_text_filter
 from bibframe.reader.marc import LEADER, CONTROLFIELD, DATAFIELD
+
+import rdflib
+
+from versa import I, VERSA_BASEIRI
+from versa import util
+from versa.driver import memory
+
+from bibframe import BFZ, BFLC, register_service
+from bibframe.reader import marc
+from bibframe.writer import rdf
+
+BFNS = rdflib.Namespace(BFZ)
+BFCNS = rdflib.Namespace(BFZ + 'cftag/')
+BFDNS = rdflib.Namespace(BFZ + 'dftag/')
+VNS = rdflib.Namespace(VERSA_BASEIRI)
 
 
 MARCXML_NS = "http://www.loc.gov/MARC21/slim"
@@ -52,7 +71,12 @@ class marcxmlhandler(sax.ContentHandler):
         (ns, local) = name
         if ns == MARCXML_NS:
             if local == u'record':
-                self._sink.send(self._record)
+                try:
+                    self._sink.send(self._record)
+                except StopIteration:
+                    #Handler coroutine has declined to process more records. Perhaps it's hit a limit
+                    #FIXME would be nice to throw some sort of signal to setp parse. Or...we should maybe rearchitect the event architecture (easier when we've evolved beyond SAX) :)
+                    pass
             elif local in (u'leader', u'controlfield', u'subfield'):
                 self._getcontent = False
         return
@@ -76,4 +100,73 @@ def parse_marcxml(inp, sink):
     #upstream, the parser, downstream, the next handler in the chain
     parser.setContentHandler(handler)
     parser.parse(inp)
+
+
+def bfconvert(inputs=None, base=None, out=None, limit=None, rdfttl=None, config=None, verbose=False, mods=None):
+    '''
+    inputs - One or more MARC/XML files to be parsed and converted to BIBFRAME RDF
+    out - file where raw Versa JSON dump output should be written (default: write to stdout)
+    rdfttl - file where RDF Turtle output should be written
+    config - file containing config in JSON format
+    stats - file where statistics output should be written in JSON format
+    limit - Limit the number of records processed to this number. If omitted, all records will be processed.
+    base - Base IRI to be used for creating resources.
+    mod - Python module to be imported in order to register plugins.
+    verbose - If true show additional messages and information (default: False)
+    '''
+    if config is None:
+        config = {}
+    else:
+        config = json.load(config)
+    logger = logging.getLogger('marc2bfrdf')
+    if verbose:
+        logger.setLevel(logging.DEBUG)
+
+    for mod in mods or []:
+        __import__(mod, globals(), locals(), [])
+    from bibframe import g_services
+
+    #if stats:
+    #    register_service(statsgen.statshandler)
+
+    if limit is not None:
+        try:
+            limit = int(limit)
+        except ValueError:
+            logger.debug('Limit must be a number, not "{0}". Ignoring.'.format(limit))
+
+    ids = marc.idgen(base)
+    m = memory.connection()
+    g = rdflib.Graph()
+    g.bind('bf', BFNS)
+    g.bind('bfc', BFCNS)
+    g.bind('bfd', BFDNS)
+    g.bind('v', VNS)
+
+    def postprocess(rec):
+        #No need to bother with Versa -> RDF translation if we were not asked to generate Turtle
+        if rdfttl is not None: rdf.process(m, g, logger=logger)
+        m.create_space()
+
+    #Initialize auxiliary services (i.e. plugins)
+    plugins = []
+    for pc in config.get(u'plugins', []):
+        try:
+            plugins.append(g_services[pc[u'id']](
+                config=pc,
+                logger=logger,
+            )
+            )
+        except KeyError:
+            raise Exception(u'Unknown plugin {0}'.format(pc[u'id']))
+
+    limiting = [0, limit]
+    for inf in inputs:
+        sink = marc.record_handler(m, idbase=base, limiting=limiting, plugins=plugins, ids=ids, postprocess=postprocess, out=out, logger=logger)
+        parse_marcxml(inf, sink)
+
+    if rdfttl is not None: rdfttl.write(g.serialize(format="turtle"))
+    for plugin in plugins:
+        plugin.close()
+    return
 
